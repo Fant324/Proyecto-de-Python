@@ -1,8 +1,6 @@
+
 from PyQt6.QtWidgets import QApplication, QWidget
 import sys
-
-# Importa tu ventana principal (cuando la crees)
-# from app.ui.main_window import MainWindow
 
 def main():
     app = QApplication(sys.argv)
@@ -15,3 +13,6 @@ def main():
     print("Aplicación iniciada correctamente.")
 
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
