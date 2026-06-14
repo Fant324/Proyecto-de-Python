@@ -1,10 +1,10 @@
+from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
     QFormLayout, QDialog, QMessageBox, QDateEdit,
     QHeaderView, QGroupBox,
 )
-from PyQt6.QtCore import QDate
 from src.database.session import get_session
 from src.services.sell_service import register_sell, get_sells
 
@@ -18,17 +18,21 @@ class SellWidget(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
 
         header = QLabel("Registro de Ventas")
-        header.setStyleSheet("font-size: 16px; font-weight: bold;")
+        header.setObjectName("header")
         layout.addWidget(header)
 
         btn_layout = QHBoxLayout()
         self.add_btn = QPushButton("Nueva Venta")
+        self.add_btn.setObjectName("success")
         self.add_btn.clicked.connect(self._add_sell)
         btn_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("Actualizar")
+        self.refresh_btn.setObjectName("primary")
         self.refresh_btn.clicked.connect(self._load_sells)
         btn_layout.addWidget(self.refresh_btn)
 
@@ -39,6 +43,8 @@ class SellWidget(QWidget):
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso", "Fecha"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSortingEnabled(True)
         layout.addWidget(self.table)
 
         self.setLayout(layout)
@@ -47,12 +53,14 @@ class SellWidget(QWidget):
         session = get_session()
         try:
             sells = get_sells(session)
+            self.table.setSortingEnabled(False)
             self.table.setRowCount(len(sells))
             for i, s in enumerate(sells):
                 self.table.setItem(i, 0, QTableWidgetItem(str(s.idSell)))
                 self.table.setItem(i, 1, QTableWidgetItem(str(s.cant)))
                 self.table.setItem(i, 2, QTableWidgetItem(f"${s.revenue}"))
                 self.table.setItem(i, 3, QTableWidgetItem(str(s.date)))
+            self.table.setSortingEnabled(True)
         finally:
             session.close()
 
@@ -76,14 +84,17 @@ class SellDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Nueva Venta")
-        self.setFixedSize(400, 350)
+        self.setFixedSize(420, 380)
         self.items = []
         self._setup_ui()
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
 
         form = QFormLayout()
+        form.setSpacing(8)
         self.date_input = QDateEdit()
         self.date_input.setDate(QDate.currentDate())
         self.date_input.setCalendarPopup(True)
@@ -92,6 +103,7 @@ class SellDialog(QDialog):
 
         item_group = QGroupBox("Agregar Producto")
         item_layout = QFormLayout()
+        item_layout.setSpacing(8)
 
         self.prod_input = QLineEdit()
         self.prod_input.setPlaceholderText("ID del producto")
@@ -102,6 +114,7 @@ class SellDialog(QDialog):
         item_layout.addRow("Cant:", self.qty_input)
 
         add_item_btn = QPushButton("Agregar Producto")
+        add_item_btn.setObjectName("success")
         add_item_btn.clicked.connect(self._add_item)
         item_layout.addRow(add_item_btn)
 
@@ -112,13 +125,18 @@ class SellDialog(QDialog):
         self.items_list.setColumnCount(3)
         self.items_list.setHorizontalHeaderLabels(["Producto", "Cantidad", ""])
         self.items_list.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.items_list.setAlternatingRowColors(True)
         layout.addWidget(self.items_list)
 
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
         save_btn = QPushButton("Guardar Venta")
+        save_btn.setObjectName("success")
         save_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setObjectName("danger")
         cancel_btn.clicked.connect(self.reject)
+        btn_layout.addStretch()
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
         layout.addLayout(btn_layout)
@@ -139,9 +157,11 @@ class SellDialog(QDialog):
                 raise ValueError("Cantidad: debe ser mayor a cero")
             self.items.append({"product_id": pid, "quantity": qty})
             row = self.items_list.rowCount()
+            self.items_list.setSortingEnabled(False)
             self.items_list.setRowCount(row + 1)
             self.items_list.setItem(row, 0, QTableWidgetItem(str(pid)))
             self.items_list.setItem(row, 1, QTableWidgetItem(str(qty)))
+            self.items_list.setSortingEnabled(True)
             self.prod_input.clear()
             self.qty_input.clear()
         except ValueError as e:

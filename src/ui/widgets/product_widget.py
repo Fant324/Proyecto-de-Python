@@ -1,5 +1,6 @@
 from decimal import Decimal
 import re
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
@@ -31,17 +32,21 @@ class ProductWidget(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
 
         header = QLabel("Gestión de Productos")
-        header.setStyleSheet("font-size: 16px; font-weight: bold;")
+        header.setObjectName("header")
         layout.addWidget(header)
 
         btn_layout = QHBoxLayout()
         self.add_btn = QPushButton("Nuevo Producto")
+        self.add_btn.setObjectName("success")
         self.add_btn.clicked.connect(self._add_product)
         btn_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("Actualizar")
+        self.refresh_btn.setObjectName("primary")
         self.refresh_btn.clicked.connect(self._load_products)
         btn_layout.addWidget(self.refresh_btn)
 
@@ -53,6 +58,8 @@ class ProductWidget(QWidget):
         self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Stock", "Costo", "Precio", "Editar", "Eliminar"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSortingEnabled(True)
         layout.addWidget(self.table)
 
         self.setLayout(layout)
@@ -61,6 +68,7 @@ class ProductWidget(QWidget):
         session = get_session()
         try:
             products = get_all_products(session)
+            self.table.setSortingEnabled(False)
             self.table.setRowCount(len(products))
             for i, p in enumerate(products):
                 self.table.setItem(i, 0, QTableWidgetItem(str(p.id_prod)))
@@ -70,12 +78,16 @@ class ProductWidget(QWidget):
                 self.table.setItem(i, 4, QTableWidgetItem(str(p.price)))
 
                 edit_btn = QPushButton("Editar")
+                edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 edit_btn.clicked.connect(lambda checked, pid=p.id_prod: self._edit_product(pid))
                 self.table.setCellWidget(i, 5, edit_btn)
 
                 delete_btn = QPushButton("Eliminar")
+                delete_btn.setObjectName("danger")
+                delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 delete_btn.clicked.connect(lambda checked, pid=p.id_prod: self._delete_product(pid))
                 self.table.setCellWidget(i, 6, delete_btn)
+            self.table.setSortingEnabled(True)
         finally:
             session.close()
 
@@ -135,7 +147,7 @@ class ProductDialog(QDialog):
         super().__init__(parent)
         self.product = product
         self.setWindowTitle("Editar Producto" if product else "Nuevo Producto")
-        self.setFixedSize(300, 250)
+        self.setFixedSize(320, 260)
         self._setup_ui()
         if product:
             self.name_input.setText(product.name)
@@ -144,7 +156,12 @@ class ProductDialog(QDialog):
             self.cant_input.setText(str(product.cant))
 
     def _setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
+
         form = QFormLayout()
+        form.setSpacing(8)
 
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Nombre del producto")
@@ -162,16 +179,22 @@ class ProductDialog(QDialog):
         self.cant_input.setPlaceholderText("Stock inicial (opcional)")
         form.addRow("Stock:", self.cant_input)
 
+        layout.addLayout(form)
+
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
         save_btn = QPushButton("Guardar")
+        save_btn.setObjectName("success")
         save_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setObjectName("danger")
         cancel_btn.clicked.connect(self.reject)
+        btn_layout.addStretch()
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
 
-        form.addRow(btn_layout)
-        self.setLayout(form)
+        self.setLayout(layout)
 
     def get_data(self):
         name = self.name_input.text().strip()

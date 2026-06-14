@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
@@ -21,17 +22,21 @@ class UserWidget(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
 
         header = QLabel("Gestión de Usuarios (Admin)")
-        header.setStyleSheet("font-size: 16px; font-weight: bold;")
+        header.setObjectName("header")
         layout.addWidget(header)
 
         btn_layout = QHBoxLayout()
         self.add_btn = QPushButton("Nuevo Usuario")
+        self.add_btn.setObjectName("success")
         self.add_btn.clicked.connect(self._add_user)
         btn_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("Actualizar")
+        self.refresh_btn.setObjectName("primary")
         self.refresh_btn.clicked.connect(self._load_users)
         btn_layout.addWidget(self.refresh_btn)
 
@@ -42,6 +47,8 @@ class UserWidget(QWidget):
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["ID", "Usuario", "Rol", "Acción"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSortingEnabled(True)
         layout.addWidget(self.table)
 
         self.setLayout(layout)
@@ -50,14 +57,18 @@ class UserWidget(QWidget):
         session = get_session()
         try:
             users = get_all_users(session)
+            self.table.setSortingEnabled(False)
             self.table.setRowCount(len(users))
             for i, u in enumerate(users):
                 self.table.setItem(i, 0, QTableWidgetItem(str(u.id)))
                 self.table.setItem(i, 1, QTableWidgetItem(u.username))
                 self.table.setItem(i, 2, QTableWidgetItem(u.role))
                 delete_btn = QPushButton("Eliminar")
+                delete_btn.setObjectName("danger")
+                delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
                 delete_btn.clicked.connect(lambda checked, uid=u.id: self._delete_user(uid))
                 self.table.setCellWidget(i, 3, delete_btn)
+            self.table.setSortingEnabled(True)
         finally:
             session.close()
 
@@ -101,11 +112,16 @@ class UserDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Nuevo Usuario")
-        self.setFixedSize(300, 200)
+        self.setFixedSize(320, 220)
         self._setup_ui()
 
     def _setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
+
         form = QFormLayout()
+        form.setSpacing(8)
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Nombre de usuario")
@@ -120,16 +136,22 @@ class UserDialog(QDialog):
         self.role_combo.addItems(["vendedor", "admin"])
         form.addRow("Rol:", self.role_combo)
 
+        layout.addLayout(form)
+
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
         save_btn = QPushButton("Guardar")
+        save_btn.setObjectName("success")
         save_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setObjectName("danger")
         cancel_btn.clicked.connect(self.reject)
+        btn_layout.addStretch()
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        form.addRow(btn_layout)
+        layout.addLayout(btn_layout)
 
-        self.setLayout(form)
+        self.setLayout(layout)
 
     def get_data(self):
         username = self.username_input.text().strip()

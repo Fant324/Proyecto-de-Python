@@ -1,4 +1,5 @@
 import sys
+import os
 import logging
 from PyQt6.QtWidgets import QApplication
 from src.database.session import engine
@@ -20,6 +21,13 @@ def main():
 
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
+
+    qss_path = os.path.join(os.path.dirname(__file__), "ui", "styles.qss")
+    try:
+        with open(qss_path) as f:
+            app.setStyleSheet(f.read())
+    except FileNotFoundError:
+        logger.warning("styles.qss no encontrado")
 
     main_window_ref = []
 

@@ -12,14 +12,16 @@ class LoginWindow(QWidget):
         super().__init__()
         self.on_login_success = on_login_success
         self.setWindowTitle("Inicio de Sesión - Inventario")
-        self.setFixedSize(350, 220)
+        self.setFixedSize(360, 240)
         self._setup_ui()
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(30, 20, 30, 20)
+        layout.setSpacing(12)
 
         self.title = QLabel("Sistema de Gestión de Inventario")
-        self.title.setStyleSheet("font-size: 14px; font-weight: bold; margin: 10px;")
+        self.title.setObjectName("header")
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.title)
 
@@ -33,6 +35,7 @@ class LoginWindow(QWidget):
         layout.addWidget(self.password_input)
 
         self.login_btn = QPushButton("Iniciar Sesión")
+        self.login_btn.setObjectName("success")
         self.login_btn.clicked.connect(self._handle_login)
         layout.addWidget(self.login_btn)
 

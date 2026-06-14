@@ -1,10 +1,10 @@
 from datetime import date
+from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
     QFormLayout, QDialog, QMessageBox, QDateEdit, QHeaderView,
 )
-from PyQt6.QtCore import QDate
 from src.database.session import get_session
 from src.services.entry_service import register_entry, get_entries
 from src.services.product_service import get_all_products
@@ -19,17 +19,21 @@ class EntryWidget(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
 
         header = QLabel("Registro de Entradas")
-        header.setStyleSheet("font-size: 16px; font-weight: bold;")
+        header.setObjectName("header")
         layout.addWidget(header)
 
         btn_layout = QHBoxLayout()
         self.add_btn = QPushButton("Nueva Entrada")
+        self.add_btn.setObjectName("success")
         self.add_btn.clicked.connect(self._add_entry)
         btn_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("Actualizar")
+        self.refresh_btn.setObjectName("primary")
         self.refresh_btn.clicked.connect(self._load_entries)
         btn_layout.addWidget(self.refresh_btn)
 
@@ -40,6 +44,8 @@ class EntryWidget(QWidget):
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["ID", "Producto", "Cantidad", "Fecha"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSortingEnabled(True)
         layout.addWidget(self.table)
 
         self.setLayout(layout)
@@ -48,6 +54,7 @@ class EntryWidget(QWidget):
         session = get_session()
         try:
             entries = get_entries(session)
+            self.table.setSortingEnabled(False)
             self.table.setRowCount(len(entries))
             for i, e in enumerate(entries):
                 self.table.setItem(i, 0, QTableWidgetItem(str(e.idEntry)))
@@ -57,6 +64,7 @@ class EntryWidget(QWidget):
                 self.table.setItem(i, 1, QTableWidgetItem(name))
                 self.table.setItem(i, 2, QTableWidgetItem(str(e.cant)))
                 self.table.setItem(i, 3, QTableWidgetItem(str(e.date)))
+            self.table.setSortingEnabled(True)
         finally:
             session.close()
 
@@ -78,11 +86,16 @@ class EntryDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Nueva Entrada")
-        self.setFixedSize(300, 200)
+        self.setFixedSize(320, 220)
         self._setup_ui()
 
     def _setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
+
         form = QFormLayout()
+        form.setSpacing(8)
 
         self.product_input = QLineEdit()
         self.product_input.setPlaceholderText("ID del producto")
@@ -97,16 +110,22 @@ class EntryDialog(QDialog):
         self.date_input.setCalendarPopup(True)
         form.addRow("Fecha:", self.date_input)
 
+        layout.addLayout(form)
+
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(8)
         save_btn = QPushButton("Guardar")
+        save_btn.setObjectName("success")
         save_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setObjectName("danger")
         cancel_btn.clicked.connect(self.reject)
+        btn_layout.addStretch()
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        form.addRow(btn_layout)
+        layout.addLayout(btn_layout)
 
-        self.setLayout(form)
+        self.setLayout(layout)
 
     def get_data(self):
         product_text = self.product_input.text().strip()

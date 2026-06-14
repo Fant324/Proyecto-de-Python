@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QStackedWidget, QMessageBox,
@@ -10,27 +11,50 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.current_user = user
         self.setWindowTitle(f"Inventario - {user.username} ({user.role})")
-        self.resize(900, 650)
+        self.resize(950, 680)
         self._setup_ui()
 
     def _setup_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        header_bar = QWidget()
+        header_bar.setObjectName("headerBar")
+        header_bar.setStyleSheet(
+            "QWidget#headerBar { background-color: #1e3a5f; padding: 12px 20px; }"
+        )
+        header_layout = QHBoxLayout(header_bar)
+        header_layout.setContentsMargins(20, 8, 20, 8)
 
         header = QLabel(f"Bienvenido, {self.current_user.username} ({self.current_user.role})")
-        header.setStyleSheet("font-size: 16px; font-weight: bold; padding: 10px;")
-        main_layout.addWidget(header)
+        header.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        header_layout.addWidget(header)
+        header_layout.addStretch()
+        main_layout.addWidget(header_bar)
 
         content = QHBoxLayout()
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(0)
 
-        self.menu_layout = QVBoxLayout()
-        self.menu_layout.setSpacing(5)
-        self.menu_layout.addWidget(QLabel("Menú"))
+        menu_panel = QWidget()
+        menu_panel.setObjectName("menuPanel")
+        menu_panel.setStyleSheet(
+            "QWidget#menuPanel { background-color: #243b55; min-width: 180px; max-width: 180px; }"
+        )
+        self.menu_layout = QVBoxLayout(menu_panel)
+        self.menu_layout.setContentsMargins(8, 12, 8, 12)
+        self.menu_layout.setSpacing(4)
+
+        menu_title = QLabel("Menú")
+        menu_title.setStyleSheet("color: #8ba4be; font-weight: bold; font-size: 12px; padding: 4px 8px;")
+        self.menu_layout.addWidget(menu_title)
 
         self._build_menu()
 
-        content.addLayout(self.menu_layout)
+        content.addWidget(menu_panel)
 
         self.stack = QStackedWidget()
         content.addWidget(self.stack, 1)
@@ -47,7 +71,11 @@ class MainWindow(QMainWindow):
         if self.current_user.role == "admin":
             self.add_menu_btn("Usuarios", self._show_users)
 
+        self.menu_layout.addSpacing(20)
+
         logout_btn = QPushButton("Cerrar Sesión")
+        logout_btn.setObjectName("logout")
+        logout_btn.setMinimumHeight(40)
         logout_btn.clicked.connect(self._logout)
         self.menu_layout.addWidget(logout_btn)
 
@@ -55,7 +83,15 @@ class MainWindow(QMainWindow):
 
     def add_menu_btn(self, text, callback):
         btn = QPushButton(text)
-        btn.setMinimumHeight(40)
+        btn.setObjectName("menuBtn")
+        btn.setMinimumHeight(42)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setStyleSheet(
+            "QPushButton#menuBtn { background-color: transparent; color: #ecf0f1; "
+            "text-align: left; padding: 8px 12px; border-radius: 4px; font-weight: normal; }"
+            "QPushButton#menuBtn:hover { background-color: #2c6e9e; }"
+            "QPushButton#menuBtn:pressed { background-color: #1e5a7e; }"
+        )
         btn.clicked.connect(callback)
         self.menu_layout.addWidget(btn)
 

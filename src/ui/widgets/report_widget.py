@@ -39,9 +39,11 @@ class ReportWidget(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
 
         header = QLabel("Reportes por Fecha")
-        header.setStyleSheet("font-size: 16px; font-weight: bold;")
+        header.setObjectName("header")
         layout.addWidget(header)
 
         date_layout = QHBoxLayout()
@@ -88,36 +90,47 @@ class ReportWidget(QWidget):
         self.entry_table.setColumnCount(4)
         self.entry_table.setHorizontalHeaderLabels(["ID", "Producto", "Cantidad", "Fecha"])
         self.entry_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.entry_table.setAlternatingRowColors(True)
+        self.entry_table.setSortingEnabled(True)
         self.tabs.addTab(self.entry_table, "Entradas")
 
         self.out_table = QTableWidget()
         self.out_table.setColumnCount(5)
         self.out_table.setHorizontalHeaderLabels(["ID", "Producto", "Cantidad", "Destino", "Fecha"])
         self.out_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.out_table.setAlternatingRowColors(True)
+        self.out_table.setSortingEnabled(True)
         self.tabs.addTab(self.out_table, "Salidas")
 
         self.sell_table = QTableWidget()
         self.sell_table.setColumnCount(4)
         self.sell_table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso", "Fecha"])
         self.sell_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.sell_table.setAlternatingRowColors(True)
+        self.sell_table.setSortingEnabled(True)
         self.tabs.addTab(self.sell_table, "Ventas")
 
         self.sales_by_product_table = QTableWidget()
         self.sales_by_product_table.setColumnCount(2)
         self.sales_by_product_table.setHorizontalHeaderLabels(["Producto", "Cantidad Vendida"])
         self.sales_by_product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.sales_by_product_table.setAlternatingRowColors(True)
+        self.sales_by_product_table.setSortingEnabled(True)
         self.tabs.addTab(self.sales_by_product_table, "Ventas por Producto")
 
         self.product_table = QTableWidget()
         self.product_table.setColumnCount(5)
         self.product_table.setHorizontalHeaderLabels(["Producto", "Stock", "Precio", "Costo", "Ganancia Esp."])
         self.product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.product_table.setAlternatingRowColors(True)
+        self.product_table.setSortingEnabled(True)
         self.tabs.addTab(self.product_table, "Productos")
 
         self.summary_table = QTableWidget()
         self.summary_table.setColumnCount(2)
         self.summary_table.setHorizontalHeaderLabels(["Concepto", "Valor"])
         self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.summary_table.setAlternatingRowColors(True)
         self.summary_table.setRowCount(3)
         self.tabs.addTab(self.summary_table, "Resumen")
 
@@ -168,6 +181,12 @@ class ReportWidget(QWidget):
         self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def _load_reports(self):
+        self.entry_table.setSortingEnabled(False)
+        self.out_table.setSortingEnabled(False)
+        self.sell_table.setSortingEnabled(False)
+        self.sales_by_product_table.setSortingEnabled(False)
+        self.product_table.setSortingEnabled(False)
+
         start = self.start_date.date().toPyDate()
         end = self.end_date.date().toPyDate()
         self._current_start = start
@@ -262,6 +281,11 @@ class ReportWidget(QWidget):
             QMessageBox.critical(self, "Error", str(e))
         finally:
             session.close()
+            self.entry_table.setSortingEnabled(True)
+            self.out_table.setSortingEnabled(True)
+            self.sell_table.setSortingEnabled(True)
+            self.sales_by_product_table.setSortingEnabled(True)
+            self.product_table.setSortingEnabled(True)
 
     def _export_csv(self):
         tab_index = self.tabs.currentIndex()
