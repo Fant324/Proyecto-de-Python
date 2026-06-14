@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QScreen
 from src.database.session import engine
@@ -42,8 +43,11 @@ def main():
 
     def on_login_success(user):
         w = MainWindow(user)
-        w.showFullScreen()
+        w.show()
+        w.raise_()
+        w.activateWindow()
         main_window_ref.append(w)
+        QTimer.singleShot(150, w.showFullScreen)
 
     login = LoginWindow(on_login_success)
     login.show()

@@ -24,6 +24,9 @@ class MainWindow(QMainWindow):
         else:
             self.showFullScreen()
 
+    def _close_app(self):
+        QApplication.quit()
+
     def _setup_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
@@ -70,9 +73,6 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(header_bar)
 
-    def _close_app(self):
-        QApplication.quit()
-
         content = QHBoxLayout()
         content.setContentsMargins(0, 0, 0, 0)
         content.setSpacing(0)
@@ -107,6 +107,7 @@ class MainWindow(QMainWindow):
         content.addWidget(stack_container, 1)
 
         main_layout.addLayout(content)
+        self._show_products()
 
     def _build_menu(self):
         self.add_menu_btn("Productos", self._show_products)
@@ -188,3 +189,4 @@ class MainWindow(QMainWindow):
     def _on_relogin(self, user):
         self._new_main = MainWindow(user)
         self._new_main.show()
+        self._new_main.showFullScreen()
