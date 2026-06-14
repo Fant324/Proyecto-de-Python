@@ -1,3 +1,4 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox,
@@ -19,7 +20,7 @@ class LoginWindow(QWidget):
 
         self.title = QLabel("Sistema de Gestión de Inventario")
         self.title.setStyleSheet("font-size: 14px; font-weight: bold; margin: 10px;")
-        self.title.setAlignment(self.title.AlignmentFlag.AlignCenter)
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.title)
 
         self.username_input = QLineEdit()

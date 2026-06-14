@@ -95,7 +95,9 @@ class MainWindow(QMainWindow):
     def _logout(self):
         from src.ui.login_window import LoginWindow
         self.close()
-        login = LoginWindow(lambda user: (
-            MainWindow(user).show()
-        ))
-        login.show()
+        self._login_window = LoginWindow(self._on_relogin)
+        self._login_window.show()
+
+    def _on_relogin(self, user):
+        self._new_main = MainWindow(user)
+        self._new_main.show()

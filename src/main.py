@@ -21,7 +21,14 @@ def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
 
-    login = LoginWindow(lambda user: MainWindow(user).show())
+    main_window_ref = []
+
+    def on_login_success(user):
+        w = MainWindow(user)
+        w.show()
+        main_window_ref.append(w)
+
+    login = LoginWindow(on_login_success)
     login.show()
 
     sys.exit(app.exec())
