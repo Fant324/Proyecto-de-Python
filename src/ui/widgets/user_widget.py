@@ -69,9 +69,9 @@ class UserWidget(QWidget):
             return
         dialog = UserDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            data = dialog.get_data()
             session = get_session()
             try:
+                data = dialog.get_data()
                 create_user(session, data["username"], data["password"], data["role"])
                 self._load_users()
             except Exception as e:
@@ -132,8 +132,14 @@ class UserDialog(QDialog):
         self.setLayout(form)
 
     def get_data(self):
+        username = self.username_input.text().strip()
+        if not username:
+            raise ValueError("El nombre de usuario no puede estar vacío")
+        password = self.password_input.text().strip()
+        if not password:
+            raise ValueError("La contraseña no puede estar vacía")
         return {
-            "username": self.username_input.text().strip(),
-            "password": self.password_input.text().strip(),
+            "username": username,
+            "password": password,
             "role": self.role_combo.currentText(),
         }

@@ -63,9 +63,9 @@ class OutWidget(QWidget):
     def _add_out(self):
         dialog = OutDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            data = dialog.get_data()
             session = get_session()
             try:
+                data = dialog.get_data()
                 register_out(session, data["product_id"], data["cant"], data["destination"], data["date"])
                 self._load_outs()
             except ValueError as e:
@@ -115,12 +115,19 @@ class OutDialog(QDialog):
         self.setLayout(form)
 
     def get_data(self):
+        product_text = self.product_input.text().strip()
+        if not product_text:
+            raise ValueError("Debe ingresar un ID de producto")
+        product_id = int(product_text)
         cant = int(self.cant_input.text().strip())
         if cant <= 0:
             raise ValueError("La cantidad debe ser mayor a cero")
+        destination = self.dest_input.text().strip()
+        if not destination:
+            raise ValueError("El destino no puede estar vacío")
         return {
-            "product_id": int(self.product_input.text().strip()),
+            "product_id": product_id,
             "cant": cant,
-            "destination": self.dest_input.text().strip(),
+            "destination": destination,
             "date": self.date_input.date().toPyDate(),
         }

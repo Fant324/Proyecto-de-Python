@@ -1,4 +1,5 @@
 from decimal import Decimal
+import re
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
@@ -8,6 +9,17 @@ from src.database.session import get_session
 from src.services.product_service import (
     create_product, get_all_products, update_product, delete_product,
 )
+
+
+def _to_decimal(value: str) -> Decimal:
+    value = value.strip().replace(",", ".")
+    value = re.sub(r"[^\d.\-]", "", value)
+    if not value or value in (".", "-"):
+        return Decimal("0")
+    try:
+        return Decimal(value)
+    except Exception:
+        return Decimal("0")
 
 
 class ProductWidget(QWidget):
@@ -70,9 +82,9 @@ class ProductWidget(QWidget):
     def _add_product(self):
         dialog = ProductDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            data = dialog.get_data()
             session = get_session()
             try:
+                data = dialog.get_data()
                 create_product(session, data["name"], data["cost"], data["price"], data.get("cant", 0))
                 self._load_products()
             except Exception as e:
@@ -162,9 +174,18 @@ class ProductDialog(QDialog):
         self.setLayout(form)
 
     def get_data(self):
+        name = self.name_input.text().strip()
+        if not name:
+            raise ValueError("El nombre del producto no puede estar vacío")
+        cost = _to_decimal(self.cost_input.text())
+        if cost <= 0:
+            raise ValueError("El costo debe ser mayor a cero")
+        price = _to_decimal(self.price_input.text())
+        if price <= 0:
+            raise ValueError("El precio debe ser mayor a cero")
         return {
-            "name": self.name_input.text().strip(),
-            "cost": Decimal(self.cost_input.text().strip() or "0"),
-            "price": Decimal(self.price_input.text().strip() or "0"),
+            "name": name,
+            "cost": cost,
+            "price": price,
             "cant": int(self.cant_input.text().strip() or "0"),
         }

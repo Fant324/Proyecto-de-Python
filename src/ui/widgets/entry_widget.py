@@ -63,9 +63,9 @@ class EntryWidget(QWidget):
     def _add_entry(self):
         dialog = EntryDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            data = dialog.get_data()
             session = get_session()
             try:
+                data = dialog.get_data()
                 register_entry(session, data["product_id"], data["cant"], data["date"])
                 self._load_entries()
             except Exception as e:
@@ -109,11 +109,15 @@ class EntryDialog(QDialog):
         self.setLayout(form)
 
     def get_data(self):
+        product_text = self.product_input.text().strip()
+        if not product_text:
+            raise ValueError("Debe ingresar un ID de producto")
+        product_id = int(product_text)
         cant = int(self.cant_input.text().strip())
         if cant <= 0:
             raise ValueError("La cantidad debe ser mayor a cero")
         return {
-            "product_id": int(self.product_input.text().strip()),
+            "product_id": product_id,
             "cant": cant,
             "date": self.date_input.date().toPyDate(),
         }

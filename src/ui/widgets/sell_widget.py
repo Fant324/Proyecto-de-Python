@@ -59,9 +59,9 @@ class SellWidget(QWidget):
     def _add_sell(self):
         dialog = SellDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            data = dialog.get_data()
             session = get_session()
             try:
+                data = dialog.get_data()
                 register_sell(session, data["items"], data["date"])
                 self._load_sells()
             except ValueError as e:
@@ -142,6 +142,8 @@ class SellDialog(QDialog):
             QMessageBox.warning(self, "Error", "Datos de producto inválidos")
 
     def get_data(self):
+        if not self.items:
+            raise ValueError("Debe agregar al menos un producto a la venta")
         return {
             "items": self.items,
             "date": self.date_input.date().toPyDate(),
