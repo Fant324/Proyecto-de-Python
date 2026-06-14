@@ -4,6 +4,12 @@ from src.models.product import Product
 
 
 def create_product(session: Session, name: str, cost: Decimal, price: Decimal, cant: int = 0) -> Product:
+    if not name:
+        raise ValueError("El nombre del producto no puede estar vacío")
+    if cost <= 0:
+        raise ValueError("El costo debe ser un número positivo")
+    if price <= 0:
+        raise ValueError("El precio debe ser un número positivo")
     product = Product(name=name, cost=cost, price=price, cant=cant)
     session.add(product)
     session.commit()

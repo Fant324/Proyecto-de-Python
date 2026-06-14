@@ -118,8 +118,14 @@ class OutDialog(QDialog):
         product_text = self.product_input.text().strip()
         if not product_text:
             raise ValueError("Debe ingresar un ID de producto")
-        product_id = int(product_text)
-        cant = int(self.cant_input.text().strip())
+        try:
+            product_id = int(product_text)
+        except ValueError:
+            raise ValueError("El ID de producto debe ser un número")
+        try:
+            cant = int(self.cant_input.text().strip())
+        except ValueError:
+            raise ValueError("La cantidad debe ser un número entero")
         if cant <= 0:
             raise ValueError("La cantidad debe ser mayor a cero")
         destination = self.dest_input.text().strip()

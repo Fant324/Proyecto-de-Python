@@ -15,11 +15,11 @@ def _to_decimal(value: str) -> Decimal:
     value = value.strip().replace(",", ".")
     value = re.sub(r"[^\d.\-]", "", value)
     if not value or value in (".", "-"):
-        return Decimal("0")
+        raise ValueError("Ingrese un número válido")
     try:
         return Decimal(value)
     except Exception:
-        return Decimal("0")
+        raise ValueError("Ingrese un número válido")
 
 
 class ProductWidget(QWidget):
@@ -179,10 +179,10 @@ class ProductDialog(QDialog):
             raise ValueError("El nombre del producto no puede estar vacío")
         cost = _to_decimal(self.cost_input.text())
         if cost <= 0:
-            raise ValueError("El costo debe ser mayor a cero")
+            raise ValueError("El costo debe ser un número positivo")
         price = _to_decimal(self.price_input.text())
         if price <= 0:
-            raise ValueError("El precio debe ser mayor a cero")
+            raise ValueError("El precio debe ser un número positivo")
         return {
             "name": name,
             "cost": cost,

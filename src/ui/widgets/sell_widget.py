@@ -127,10 +127,16 @@ class SellDialog(QDialog):
 
     def _add_item(self):
         try:
-            pid = int(self.prod_input.text().strip())
-            qty = int(self.qty_input.text().strip())
+            pid_text = self.prod_input.text().strip()
+            if not pid_text:
+                raise ValueError("Debe ingresar un ID de producto")
+            pid = int(pid_text)
+            qty_text = self.qty_input.text().strip()
+            if not qty_text:
+                raise ValueError("Debe ingresar una cantidad")
+            qty = int(qty_text)
             if qty <= 0:
-                raise ValueError
+                raise ValueError("La cantidad debe ser mayor a cero")
             self.items.append({"product_id": pid, "quantity": qty})
             row = self.items_list.rowCount()
             self.items_list.setRowCount(row + 1)
@@ -138,8 +144,8 @@ class SellDialog(QDialog):
             self.items_list.setItem(row, 1, QTableWidgetItem(str(qty)))
             self.prod_input.clear()
             self.qty_input.clear()
-        except ValueError:
-            QMessageBox.warning(self, "Error", "Datos de producto inválidos")
+        except ValueError as e:
+            QMessageBox.warning(self, "Error", str(e))
 
     def get_data(self):
         if not self.items:
