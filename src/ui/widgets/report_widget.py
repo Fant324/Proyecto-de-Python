@@ -1,5 +1,6 @@
 import csv
 import os
+import json
 from datetime import date
 from decimal import Decimal
 from PyQt6.QtWidgets import (
@@ -12,12 +13,29 @@ from PyQt6.QtCore import QDate
 from src.database.session import get_session
 from src.services.report_service import get_entries, get_outs, get_sells, get_sales_by_product, get_summary
 
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "conversion_config.json")
+
 
 class ReportWidget(QWidget):
     def __init__(self, user):
         super().__init__()
         self.current_user = user
         self._setup_ui()
+
+    def _load_rate(self):
+        try:
+            with open(CONFIG_PATH) as f:
+                data = json.load(f)
+                return float(data.get("rate", 24.0))
+        except (FileNotFoundError, json.JSONDecodeError, TypeError):
+            return 24.0
+
+    def _save_rate(self, rate):
+        try:
+            with open(CONFIG_PATH, "w") as f:
+                json.dump({"rate": rate}, f)
+        except OSError:
+            pass
 
     def _setup_ui(self):
         layout = QVBoxLayout()
@@ -51,12 +69,14 @@ class ReportWidget(QWidget):
         self.convert_cb.toggled.connect(self._on_toggle_conversion)
         date_layout.addWidget(self.convert_cb)
 
+        saved_rate = self._load_rate()
         self.rate_input = QDoubleSpinBox()
         self.rate_input.setDecimals(4)
         self.rate_input.setRange(0.0001, 999999.0)
-        self.rate_input.setValue(24.0)
+        self.rate_input.setValue(saved_rate)
         self.rate_input.setPrefix("Tasa: ")
         self.rate_input.setEnabled(False)
+        self.rate_input.valueChanged.connect(lambda v: self._save_rate(v))
         date_layout.addWidget(self.rate_input)
 
         layout.addLayout(date_layout)
@@ -95,10 +115,18 @@ class ReportWidget(QWidget):
         self.summary_table.setRowCount(3)
         self.tabs.addTab(self.summary_table, "Resumen")
 
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
         self.setLayout(layout)
 
+        self._on_tab_changed(self.tabs.currentIndex())
         self._load_reports()
         self._update_sell_columns(False)
+
+    def _on_tab_changed(self, index):
+        show = index in (2, 4)
+        self.convert_cb.setVisible(show)
+        self.rate_input.setVisible(show)
 
     def _on_toggle_conversion(self, enabled):
         self.rate_input.setEnabled(enabled)
@@ -113,6 +141,12 @@ class ReportWidget(QWidget):
             self.sell_table.setColumnCount(4)
             self.sell_table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso", "Fecha"])
         self.sell_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.summary_table.setColumnCount(3 if enabled else 2)
+        if enabled:
+            self.summary_table.setHorizontalHeaderLabels(["Concepto", "Valor (USD)", "Valor (CUP)"])
+        else:
+            self.summary_table.setHorizontalHeaderLabels(["Concepto", "Valor"])
+        self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def _load_reports(self):
         start = self.start_date.date().toPyDate()
@@ -183,6 +217,13 @@ class ReportWidget(QWidget):
             self.summary_table.setItem(1, 1, QTableWidgetItem(f"${cost_val:.2f}"))
             self.summary_table.setItem(2, 0, QTableWidgetItem("Ganancia Total"))
             self.summary_table.setItem(2, 1, QTableWidgetItem(f"${profit_val:.2f}"))
+            if use_conversion:
+                converted_revenue = revenue_val * rate
+                converted_cost = cost_val * rate
+                converted_profit = profit_val * rate
+                self.summary_table.setItem(0, 2, QTableWidgetItem(f"${converted_revenue:.2f}"))
+                self.summary_table.setItem(1, 2, QTableWidgetItem(f"${converted_cost:.2f}"))
+                self.summary_table.setItem(2, 2, QTableWidgetItem(f"${converted_profit:.2f}"))
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
         finally:
@@ -216,7 +257,10 @@ class ReportWidget(QWidget):
             headers = ["Producto", "Cantidad Vendida"]
         else:
             data = self._summary_data
-            headers = ["Concepto", "Valor"]
+            if self.convert_cb.isChecked():
+                headers = ["Concepto", "Valor (USD)", "Valor (CUP)"]
+            else:
+                headers = ["Concepto", "Valor"]
 
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -236,8 +280,17 @@ class ReportWidget(QWidget):
                 elif tab_index == 3:
                     writer.writerow([row.name, row.total_sold])
                 else:
-                    writer.writerow(["Ingreso Total", str(data["total_revenue"])])
-                    writer.writerow(["Costo Total", str(data["total_cost"])])
-                    writer.writerow(["Ganancia Total", str(data["total_profit"])])
+                    if self.convert_cb.isChecked():
+                        rate = Decimal(str(self.rate_input.value()))
+                        rev = Decimal(str(data["total_revenue"]))
+                        cost = Decimal(str(data["total_cost"]))
+                        profit = Decimal(str(data["total_profit"]))
+                        writer.writerow(["Ingreso Total", f"{rev:.2f}", f"{rev * rate:.2f}"])
+                        writer.writerow(["Costo Total", f"{cost:.2f}", f"{cost * rate:.2f}"])
+                        writer.writerow(["Ganancia Total", f"{profit:.2f}", f"{profit * rate:.2f}"])
+                    else:
+                        writer.writerow(["Ingreso Total", str(data["total_revenue"])])
+                        writer.writerow(["Costo Total", str(data["total_cost"])])
+                        writer.writerow(["Ganancia Total", str(data["total_profit"])])
 
         QMessageBox.information(self, "Exportado", f"Reporte guardado en:\n{path}")
