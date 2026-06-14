@@ -134,10 +134,10 @@ class UserDialog(QDialog):
     def get_data(self):
         username = self.username_input.text().strip()
         if not username:
-            raise ValueError("El nombre de usuario no puede estar vacío")
+            raise ValueError("Usuario: el nombre de usuario no puede estar vacío")
         password = self.password_input.text().strip()
         if not password:
-            raise ValueError("La contraseña no puede estar vacía")
+            raise ValueError("Contraseña: no puede estar vacía")
         return {
             "username": username,
             "password": password,

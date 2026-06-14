@@ -111,17 +111,17 @@ class EntryDialog(QDialog):
     def get_data(self):
         product_text = self.product_input.text().strip()
         if not product_text:
-            raise ValueError("Debe ingresar un ID de producto")
+            raise ValueError("ID Producto: debe ingresar un ID de producto")
         try:
             product_id = int(product_text)
         except ValueError:
-            raise ValueError("El ID de producto debe ser un número")
+            raise ValueError("ID Producto: debe ser un número")
         try:
             cant = int(self.cant_input.text().strip())
         except ValueError:
-            raise ValueError("La cantidad debe ser un número entero")
+            raise ValueError("Cantidad: debe ser un número entero")
         if cant <= 0:
-            raise ValueError("La cantidad debe ser mayor a cero")
+            raise ValueError("Cantidad: debe ser mayor a cero")
         return {
             "product_id": product_id,
             "cant": cant,

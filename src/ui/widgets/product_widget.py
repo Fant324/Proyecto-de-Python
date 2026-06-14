@@ -11,15 +11,15 @@ from src.services.product_service import (
 )
 
 
-def _to_decimal(value: str) -> Decimal:
+def _to_decimal(value: str, field: str) -> Decimal:
     value = value.strip().replace(",", ".")
     value = re.sub(r"[^\d.\-]", "", value)
     if not value or value in (".", "-"):
-        raise ValueError("Ingrese un número válido")
+        raise ValueError(f"{field}: ingrese un número válido")
     try:
         return Decimal(value)
     except Exception:
-        raise ValueError("Ingrese un número válido")
+        raise ValueError(f"{field}: ingrese un número válido")
 
 
 class ProductWidget(QWidget):
@@ -176,13 +176,13 @@ class ProductDialog(QDialog):
     def get_data(self):
         name = self.name_input.text().strip()
         if not name:
-            raise ValueError("El nombre del producto no puede estar vacío")
-        cost = _to_decimal(self.cost_input.text())
+            raise ValueError("Nombre: el nombre del producto no puede estar vacío")
+        cost = _to_decimal(self.cost_input.text(), "Costo")
         if cost <= 0:
-            raise ValueError("El costo debe ser un número positivo")
-        price = _to_decimal(self.price_input.text())
+            raise ValueError("Costo: debe ser un número positivo")
+        price = _to_decimal(self.price_input.text(), "Precio")
         if price <= 0:
-            raise ValueError("El precio debe ser un número positivo")
+            raise ValueError("Precio: debe ser un número positivo")
         return {
             "name": name,
             "cost": cost,

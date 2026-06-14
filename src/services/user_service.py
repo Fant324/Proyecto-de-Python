@@ -4,6 +4,10 @@ from src.services.auth_service import hash_password, require_admin
 
 
 def create_user(session: Session, username: str, password: str, role: str = "vendedor") -> User:
+    if not username:
+        raise ValueError("Usuario: el nombre de usuario no puede estar vacío")
+    if not password:
+        raise ValueError("Contraseña: no puede estar vacía")
     user = User(username=username, password=hash_password(password), role=role)
     session.add(user)
     session.commit()

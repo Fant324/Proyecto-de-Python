@@ -5,6 +5,12 @@ from src.services.stock_service import remove_stock, get_stock
 
 
 def register_out(session: Session, product_id: int, quantity: int, destination: str, out_date: date | None = None) -> Out:
+    if product_id <= 0:
+        raise ValueError("ID Producto: inválido")
+    if quantity <= 0:
+        raise ValueError("Cantidad: debe ser mayor a cero")
+    if not destination:
+        raise ValueError("Destino: no puede estar vacío")
     current_stock = get_stock(session, product_id)
     if current_stock is None:
         raise ValueError("El producto no existe")

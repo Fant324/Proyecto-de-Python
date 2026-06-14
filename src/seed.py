@@ -1,9 +1,11 @@
-from src.database.session import get_session
+from src.database.session import get_session, engine
+from src.database.base import Base
 from src.models.user import User
 from src.services.auth_service import hash_password
 
 
 def seed_admin():
+    Base.metadata.create_all(bind=engine)
     session = get_session()
     try:
         existing = session.query(User).filter(User.username == "admin").first()

@@ -12,6 +12,8 @@ def register_sell(
     items: list[dict],
     sell_date: date | None = None,
 ) -> Sell:
+    if not items:
+        raise ValueError("Productos: debe incluir al menos un producto en la venta")
     total_units = 0
     total_revenue = Decimal("0.00")
 

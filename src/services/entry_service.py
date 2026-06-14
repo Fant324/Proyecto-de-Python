@@ -5,6 +5,10 @@ from src.services.stock_service import add_stock, get_stock
 
 
 def register_entry(session: Session, product_id: int, quantity: int, entry_date: date | None = None) -> Entry:
+    if product_id <= 0:
+        raise ValueError("ID Producto: inválido")
+    if quantity <= 0:
+        raise ValueError("Cantidad: debe ser mayor a cero")
     entry = Entry(
         id_prod=product_id,
         cant=quantity,

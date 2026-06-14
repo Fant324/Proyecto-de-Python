@@ -129,14 +129,14 @@ class SellDialog(QDialog):
         try:
             pid_text = self.prod_input.text().strip()
             if not pid_text:
-                raise ValueError("Debe ingresar un ID de producto")
+                raise ValueError("ID Producto: debe ingresar un ID de producto")
             pid = int(pid_text)
             qty_text = self.qty_input.text().strip()
             if not qty_text:
-                raise ValueError("Debe ingresar una cantidad")
+                raise ValueError("Cantidad: debe ingresar una cantidad")
             qty = int(qty_text)
             if qty <= 0:
-                raise ValueError("La cantidad debe ser mayor a cero")
+                raise ValueError("Cantidad: debe ser mayor a cero")
             self.items.append({"product_id": pid, "quantity": qty})
             row = self.items_list.rowCount()
             self.items_list.setRowCount(row + 1)
@@ -149,7 +149,7 @@ class SellDialog(QDialog):
 
     def get_data(self):
         if not self.items:
-            raise ValueError("Debe agregar al menos un producto a la venta")
+            raise ValueError("Productos: debe agregar al menos un producto a la venta")
         return {
             "items": self.items,
             "date": self.date_input.date().toPyDate(),
