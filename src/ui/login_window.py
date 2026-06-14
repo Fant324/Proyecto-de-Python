@@ -17,12 +17,13 @@ class LoginWindow(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout()
-        layout.setContentsMargins(30, 20, 30, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(30, 24, 30, 24)
+        layout.setSpacing(14)
 
-        self.title = QLabel("Sistema de Gestión de Inventario")
+        self.title = QLabel("Sistema de\nGestión de Inventario")
         self.title.setObjectName("header")
         self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title.setWordWrap(True)
         layout.addWidget(self.title)
 
         self.username_input = QLineEdit()

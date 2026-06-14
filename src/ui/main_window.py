@@ -24,13 +24,13 @@ class MainWindow(QMainWindow):
         header_bar = QWidget()
         header_bar.setObjectName("headerBar")
         header_bar.setStyleSheet(
-            "QWidget#headerBar { background-color: #1e3a5f; padding: 12px 20px; }"
+            "QWidget#headerBar { background-color: #2d2d2d; padding: 12px 20px; }"
         )
         header_layout = QHBoxLayout(header_bar)
         header_layout.setContentsMargins(20, 8, 20, 8)
 
         header = QLabel(f"Bienvenido, {self.current_user.username} ({self.current_user.role})")
-        header.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        header.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
         header_layout.addWidget(header)
         header_layout.addStretch()
         main_layout.addWidget(header_bar)
@@ -42,14 +42,14 @@ class MainWindow(QMainWindow):
         menu_panel = QWidget()
         menu_panel.setObjectName("menuPanel")
         menu_panel.setStyleSheet(
-            "QWidget#menuPanel { background-color: #243b55; min-width: 180px; max-width: 180px; }"
+            "QWidget#menuPanel { background-color: #252525; min-width: 180px; max-width: 180px; }"
         )
         self.menu_layout = QVBoxLayout(menu_panel)
         self.menu_layout.setContentsMargins(8, 12, 8, 12)
         self.menu_layout.setSpacing(4)
 
         menu_title = QLabel("Menú")
-        menu_title.setStyleSheet("color: #8ba4be; font-weight: bold; font-size: 12px; padding: 4px 8px;")
+        menu_title.setStyleSheet("color: #888888; font-weight: bold; font-size: 12px; padding: 4px 8px;")
         self.menu_layout.addWidget(menu_title)
 
         self._build_menu()
@@ -87,10 +87,10 @@ class MainWindow(QMainWindow):
         btn.setMinimumHeight(42)
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(
-            "QPushButton#menuBtn { background-color: transparent; color: #ecf0f1; "
+            "QPushButton#menuBtn { background-color: transparent; color: #cccccc; "
             "text-align: left; padding: 8px 12px; border-radius: 4px; font-weight: normal; }"
-            "QPushButton#menuBtn:hover { background-color: #2c6e9e; }"
-            "QPushButton#menuBtn:pressed { background-color: #1e5a7e; }"
+            "QPushButton#menuBtn:hover { background-color: #3a3a3a; }"
+            "QPushButton#menuBtn:pressed { background-color: #505050; }"
         )
         btn.clicked.connect(callback)
         self.menu_layout.addWidget(btn)
