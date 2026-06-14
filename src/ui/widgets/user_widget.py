@@ -1,0 +1,133 @@
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+    QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
+    QFormLayout, QComboBox, QDialog, QMessageBox, QHeaderView,
+)
+from src.database.session import get_session
+from src.services.auth_service import require_admin
+from src.services.user_service import (
+    create_user, get_all_users, delete_user,
+)
+from src.models.user import User
+
+
+class UserWidget(QWidget):
+    def __init__(self, user: User):
+        super().__init__()
+        self.current_user = user
+        self._setup_ui()
+        self._load_users()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout()
+
+        header = QLabel("Gestión de Usuarios (Admin)")
+        header.setStyleSheet("font-size: 16px; font-weight: bold;")
+        layout.addWidget(header)
+
+        btn_layout = QHBoxLayout()
+        self.add_btn = QPushButton("Nuevo Usuario")
+        self.add_btn.clicked.connect(self._add_user)
+        btn_layout.addWidget(self.add_btn)
+
+        self.refresh_btn = QPushButton("Actualizar")
+        self.refresh_btn.clicked.connect(self._load_users)
+        btn_layout.addWidget(self.refresh_btn)
+
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+
+        self.table = QTableWidget()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["ID", "Usuario", "Rol", "Acción"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(self.table)
+
+        self.setLayout(layout)
+
+    def _load_users(self):
+        session = get_session()
+        try:
+            users = get_all_users(session)
+            self.table.setRowCount(len(users))
+            for i, u in enumerate(users):
+                self.table.setItem(i, 0, QTableWidgetItem(str(u.id)))
+                self.table.setItem(i, 1, QTableWidgetItem(u.username))
+                self.table.setItem(i, 2, QTableWidgetItem(u.role))
+                delete_btn = QPushButton("Eliminar")
+                delete_btn.clicked.connect(lambda checked, uid=u.id: self._delete_user(uid))
+                self.table.setCellWidget(i, 3, delete_btn)
+        finally:
+            session.close()
+
+    def _add_user(self):
+        dialog = UserDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            data = dialog.get_data()
+            session = get_session()
+            try:
+                create_user(session, data["username"], data["password"], data["role"])
+                self._load_users()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+            finally:
+                session.close()
+
+    def _delete_user(self, user_id: int):
+        reply = QMessageBox.question(
+            self, "Confirmar", "¿Eliminar este usuario?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            session = get_session()
+            try:
+                delete_user(session, user_id, self.current_user)
+                self._load_users()
+            except ValueError as e:
+                QMessageBox.warning(self, "Error", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+            finally:
+                session.close()
+
+
+class UserDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Nuevo Usuario")
+        self.setFixedSize(300, 200)
+        self._setup_ui()
+
+    def _setup_ui(self):
+        form = QFormLayout()
+
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Nombre de usuario")
+        form.addRow("Usuario:", self.username_input)
+
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Contraseña")
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        form.addRow("Contraseña:", self.password_input)
+
+        self.role_combo = QComboBox()
+        self.role_combo.addItems(["vendedor", "admin"])
+        form.addRow("Rol:", self.role_combo)
+
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("Guardar")
+        save_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton("Cancelar")
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(save_btn)
+        btn_layout.addWidget(cancel_btn)
+        form.addRow(btn_layout)
+
+        self.setLayout(form)
+
+    def get_data(self):
+        return {
+            "username": self.username_input.text().strip(),
+            "password": self.password_input.text().strip(),
+            "role": self.role_combo.currentText(),
+        }

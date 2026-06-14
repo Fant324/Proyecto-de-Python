@@ -1,8 +1,9 @@
-from PyQt6.QtWidgets import QApplication, QWidget
 import sys
-
+from PyQt6.QtWidgets import QApplication
 from src.database.session import engine
 from src.database.base import Base
+from src.ui.login_window import LoginWindow
+from src.ui.main_window import MainWindow
 
 
 def main():
@@ -10,10 +11,13 @@ def main():
 
     app = QApplication(sys.argv)
 
-    window = QWidget()
-    window.setWindowTitle("Sistema de Gestión de Inventario")
-    window.resize(800, 600)
-    window.show()
+    def on_login_success(user):
+        main_win = MainWindow(user)
+        main_win.show()
+        main_win.destroyed.connect(app.quit)
+
+    login = LoginWindow(on_login_success)
+    login.show()
 
     sys.exit(app.exec())
 
