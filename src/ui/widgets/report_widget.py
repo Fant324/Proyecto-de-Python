@@ -1,10 +1,12 @@
 import csv
 import os
 from datetime import date
+from decimal import Decimal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QDateEdit,
     QTabWidget, QHeaderView, QMessageBox, QFileDialog,
+    QCheckBox, QDoubleSpinBox,
 )
 from PyQt6.QtCore import QDate
 from src.database.session import get_session
@@ -45,6 +47,18 @@ class ReportWidget(QWidget):
         self.export_btn.clicked.connect(self._export_csv)
         date_layout.addWidget(self.export_btn)
 
+        self.convert_cb = QCheckBox("Convertir a CUP")
+        self.convert_cb.toggled.connect(self._on_toggle_conversion)
+        date_layout.addWidget(self.convert_cb)
+
+        self.rate_input = QDoubleSpinBox()
+        self.rate_input.setDecimals(4)
+        self.rate_input.setRange(0.0001, 999999.0)
+        self.rate_input.setValue(24.0)
+        self.rate_input.setPrefix("Tasa: ")
+        self.rate_input.setEnabled(False)
+        date_layout.addWidget(self.rate_input)
+
         layout.addLayout(date_layout)
 
         self.tabs = QTabWidget()
@@ -77,12 +91,30 @@ class ReportWidget(QWidget):
         self.setLayout(layout)
 
         self._load_reports()
+        self._update_sell_columns(False)
+
+    def _on_toggle_conversion(self, enabled):
+        self.rate_input.setEnabled(enabled)
+        self._update_sell_columns(enabled)
+        self._load_reports()
+
+    def _update_sell_columns(self, enabled):
+        if enabled:
+            self.sell_table.setColumnCount(5)
+            self.sell_table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso (USD)", "Fecha", "Ingreso (CUP)"])
+        else:
+            self.sell_table.setColumnCount(4)
+            self.sell_table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso", "Fecha"])
+        self.sell_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def _load_reports(self):
         start = self.start_date.date().toPyDate()
         end = self.end_date.date().toPyDate()
         self._current_start = start
         self._current_end = end
+
+        use_conversion = self.convert_cb.isChecked()
+        rate = Decimal(str(self.rate_input.value()))
 
         session = get_session()
         try:
@@ -117,8 +149,14 @@ class ReportWidget(QWidget):
             for i, s in enumerate(sells):
                 self.sell_table.setItem(i, 0, QTableWidgetItem(str(s.idSell)))
                 self.sell_table.setItem(i, 1, QTableWidgetItem(str(s.cant)))
-                self.sell_table.setItem(i, 2, QTableWidgetItem(f"${s.revenue}"))
-                self.sell_table.setItem(i, 3, QTableWidgetItem(str(s.date)))
+                if use_conversion:
+                    converted = s.revenue * rate
+                    self.sell_table.setItem(i, 2, QTableWidgetItem(f"${s.revenue}"))
+                    self.sell_table.setItem(i, 3, QTableWidgetItem(str(s.date)))
+                    self.sell_table.setItem(i, 4, QTableWidgetItem(f"${converted:.2f}"))
+                else:
+                    self.sell_table.setItem(i, 2, QTableWidgetItem(f"${s.revenue}"))
+                    self.sell_table.setItem(i, 3, QTableWidgetItem(str(s.date)))
 
             sales_by_product = get_sales_by_product(session, start, end)
             self._sales_by_product_data = sales_by_product
@@ -150,7 +188,10 @@ class ReportWidget(QWidget):
             headers = ["ID", "ID Producto", "Cantidad", "Destino", "Fecha"]
         elif tab_index == 2:
             rows = self._sells_data
-            headers = ["ID", "Unidades", "Ingreso", "Fecha"]
+            if self.convert_cb.isChecked():
+                headers = ["ID", "Unidades", "Ingreso (USD)", "Fecha", "Ingreso (CUP)"]
+            else:
+                headers = ["ID", "Unidades", "Ingreso", "Fecha"]
         else:
             rows = self._sales_by_product_data
             headers = ["Producto", "Cantidad Vendida"]
@@ -164,7 +205,12 @@ class ReportWidget(QWidget):
                 elif tab_index == 1:
                     writer.writerow([row.idOut, row.id_prod, row.cant, row.destination, row.date])
                 elif tab_index == 2:
-                    writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
+                    if self.convert_cb.isChecked():
+                        rate = Decimal(str(self.rate_input.value()))
+                        converted = row.revenue * rate
+                        writer.writerow([row.idSell, row.cant, str(row.revenue), row.date, f"{converted:.2f}"])
+                    else:
+                        writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
                 else:
                     writer.writerow([row.name, row.total_sold])
 
