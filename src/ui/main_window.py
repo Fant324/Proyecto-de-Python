@@ -84,8 +84,18 @@ class MainWindow(QMainWindow):
         self._show_widget(UserWidget)
 
     def _show_widget(self, widget_class):
-        self.stack.addWidget(widget_class(self.current_user))
-        self.stack.setCurrentWidget(self.stack.currentWidget())
+        for i in range(self.stack.count()):
+            if isinstance(self.stack.widget(i), widget_class):
+                self.stack.setCurrentIndex(i)
+                return
+        widget = widget_class(self.current_user)
+        self.stack.addWidget(widget)
+        self.stack.setCurrentWidget(widget)
 
     def _logout(self):
+        from src.ui.login_window import LoginWindow
         self.close()
+        login = LoginWindow(lambda user: (
+            MainWindow(user).show()
+        ))
+        login.show()

@@ -10,13 +10,9 @@ def main():
     Base.metadata.create_all(bind=engine)
 
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(True)
 
-    def on_login_success(user):
-        main_win = MainWindow(user)
-        main_win.show()
-        main_win.destroyed.connect(app.quit)
-
-    login = LoginWindow(on_login_success)
+    login = LoginWindow(lambda user: MainWindow(user).show())
     login.show()
 
     sys.exit(app.exec())
