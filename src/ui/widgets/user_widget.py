@@ -15,6 +15,7 @@ class UserWidget(QWidget):
     def __init__(self, user: User):
         super().__init__()
         self.current_user = user
+        require_admin(self.current_user)
         self._setup_ui()
         self._load_users()
 
@@ -61,6 +62,11 @@ class UserWidget(QWidget):
             session.close()
 
     def _add_user(self):
+        try:
+            require_admin(self.current_user)
+        except PermissionError as e:
+            QMessageBox.warning(self, "Error", str(e))
+            return
         dialog = UserDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             data = dialog.get_data()

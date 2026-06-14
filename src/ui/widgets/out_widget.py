@@ -50,7 +50,10 @@ class OutWidget(QWidget):
             self.table.setRowCount(len(outs))
             for i, o in enumerate(outs):
                 self.table.setItem(i, 0, QTableWidgetItem(str(o.idOut)))
-                self.table.setItem(i, 1, QTableWidgetItem(str(o.idProd)))
+                from src.models.product import Product
+                product = session.get(Product, o.id_prod)
+                name = product.name if product else str(o.id_prod)
+                self.table.setItem(i, 1, QTableWidgetItem(name))
                 self.table.setItem(i, 2, QTableWidgetItem(str(o.cant)))
                 self.table.setItem(i, 3, QTableWidgetItem(o.destination))
                 self.table.setItem(i, 4, QTableWidgetItem(str(o.date)))
@@ -112,9 +115,12 @@ class OutDialog(QDialog):
         self.setLayout(form)
 
     def get_data(self):
+        cant = int(self.cant_input.text().strip())
+        if cant <= 0:
+            raise ValueError("La cantidad debe ser mayor a cero")
         return {
             "product_id": int(self.product_input.text().strip()),
-            "cant": int(self.cant_input.text().strip()),
+            "cant": cant,
             "destination": self.dest_input.text().strip(),
             "date": self.date_input.date().toPyDate(),
         }

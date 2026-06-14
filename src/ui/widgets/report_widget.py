@@ -85,7 +85,10 @@ class ReportWidget(QWidget):
             self.entry_table.setRowCount(len(entries))
             for i, e in enumerate(entries):
                 self.entry_table.setItem(i, 0, QTableWidgetItem(str(e.idEntry)))
-                self.entry_table.setItem(i, 1, QTableWidgetItem(str(e.idProd)))
+                from src.models.product import Product
+                product = session.get(Product, e.id_prod)
+                name = product.name if product else str(e.id_prod)
+                self.entry_table.setItem(i, 1, QTableWidgetItem(name))
                 self.entry_table.setItem(i, 2, QTableWidgetItem(str(e.cant)))
                 self.entry_table.setItem(i, 3, QTableWidgetItem(str(e.date)))
 
@@ -94,7 +97,10 @@ class ReportWidget(QWidget):
             self.out_table.setRowCount(len(outs))
             for i, o in enumerate(outs):
                 self.out_table.setItem(i, 0, QTableWidgetItem(str(o.idOut)))
-                self.out_table.setItem(i, 1, QTableWidgetItem(str(o.idProd)))
+                from src.models.product import Product
+                product = session.get(Product, o.id_prod)
+                name = product.name if product else str(o.id_prod)
+                self.out_table.setItem(i, 1, QTableWidgetItem(name))
                 self.out_table.setItem(i, 2, QTableWidgetItem(str(o.cant)))
                 self.out_table.setItem(i, 3, QTableWidgetItem(o.destination))
                 self.out_table.setItem(i, 4, QTableWidgetItem(str(o.date)))
@@ -137,6 +143,11 @@ class ReportWidget(QWidget):
             writer = csv.writer(f)
             writer.writerow(headers)
             for row in rows:
-                writer.writerow([getattr(row, c.name) for c in row.__table__.columns])
+                if tab_index == 0:
+                    writer.writerow([row.idEntry, row.id_prod, row.cant, row.date])
+                elif tab_index == 1:
+                    writer.writerow([row.idOut, row.id_prod, row.cant, row.destination, row.date])
+                else:
+                    writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
 
         QMessageBox.information(self, "Exportado", f"Reporte guardado en:\n{path}")

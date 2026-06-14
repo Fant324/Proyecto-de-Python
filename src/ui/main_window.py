@@ -81,7 +81,10 @@ class MainWindow(QMainWindow):
 
     def _show_users(self):
         from src.ui.widgets.user_widget import UserWidget
-        self._show_widget(UserWidget)
+        try:
+            self._show_widget(UserWidget)
+        except PermissionError as e:
+            QMessageBox.warning(self, "Error", str(e))
 
     def _show_widget(self, widget_class):
         for i in range(self.stack.count()):
@@ -95,6 +98,7 @@ class MainWindow(QMainWindow):
     def _logout(self):
         from src.ui.login_window import LoginWindow
         self.close()
+        self.deleteLater()
         self._login_window = LoginWindow(self._on_relogin)
         self._login_window.show()
 

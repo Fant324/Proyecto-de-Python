@@ -6,7 +6,7 @@ from src.services.stock_service import add_stock, get_stock
 
 def register_entry(session: Session, product_id: int, quantity: int, entry_date: date | None = None) -> Entry:
     entry = Entry(
-        idProd=product_id,
+        id_prod=product_id,
         cant=quantity,
         date=entry_date or date.today(),
     )

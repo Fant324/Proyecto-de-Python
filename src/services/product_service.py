@@ -11,11 +11,11 @@ def create_product(session: Session, name: str, cost: Decimal, price: Decimal, c
 
 
 def get_product(session: Session, product_id: int) -> Product | None:
-    return session.query(Product).filter(Product.idProd == product_id).first()
+    return session.query(Product).filter(Product.id_prod == product_id).first()
 
 
 def get_all_products(session: Session) -> list[Product]:
-    return session.query(Product).order_by(Product.idProd).all()
+    return session.query(Product).order_by(Product.id_prod).all()
 
 
 def update_product(session: Session, product_id: int, **kwargs) -> Product | None:

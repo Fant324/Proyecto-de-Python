@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from src.models.user import User
-from src.services.auth_service import hash_password
+from src.services.auth_service import hash_password, require_admin
 
 
 def create_user(session: Session, username: str, password: str, role: str = "vendedor") -> User:
@@ -36,6 +36,7 @@ def update_user(session: Session, user_id: int, **kwargs) -> User | None:
 
 
 def delete_user(session: Session, user_id: int, current_user: User) -> bool:
+    require_admin(current_user)
     user = get_user(session, user_id)
     if not user:
         return False

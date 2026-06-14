@@ -31,7 +31,7 @@ def register_sell(
             )
 
         total_units += quantity
-        total_revenue += Decimal(str(product.price)) * quantity
+        total_revenue += product.price * quantity
 
     sell = Sell(
         cant=total_units,
@@ -46,7 +46,7 @@ def register_sell(
         quantity = item["quantity"]
 
         prod_sell = ProdSell(
-            idProd=product_id,
+            id_prod=product_id,
             idSell=sell.idSell,
             cant=quantity,
         )

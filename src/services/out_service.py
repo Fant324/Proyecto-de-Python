@@ -12,7 +12,7 @@ def register_out(session: Session, product_id: int, quantity: int, destination: 
         raise ValueError(f"Stock insuficiente: disponible {current_stock}, requerido {quantity}")
 
     out = Out(
-        idProd=product_id,
+        id_prod=product_id,
         cant=quantity,
         destination=destination,
         date=out_date or date.today(),

@@ -1,24 +1,19 @@
-from sqlalchemy import text
 from sqlalchemy.orm import Session
+from src.models.product import Product
 
 
 def add_stock(session: Session, product_id: int, quantity: int) -> None:
-    session.execute(
-        text('UPDATE product SET cant = cant + :qty WHERE "idProd" = :pid'),
-        {"qty": quantity, "pid": product_id},
-    )
+    product = session.query(Product).filter_by(id_prod=product_id).with_for_update().one()
+    product.cant += quantity
 
 
 def remove_stock(session: Session, product_id: int, quantity: int) -> None:
-    session.execute(
-        text('UPDATE product SET cant = cant - :qty WHERE "idProd" = :pid'),
-        {"qty": quantity, "pid": product_id},
-    )
+    product = session.query(Product).filter_by(id_prod=product_id).with_for_update().one()
+    product.cant -= quantity
 
 
 def get_stock(session: Session, product_id: int) -> int | None:
-    result = session.execute(
-        text('SELECT cant FROM product WHERE "idProd" = :pid FOR UPDATE'),
-        {"pid": product_id},
-    ).scalar()
-    return result
+    product = session.query(Product).filter_by(id_prod=product_id).with_for_update().first()
+    if product is None:
+        return None
+    return product.cant

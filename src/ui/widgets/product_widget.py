@@ -37,8 +37,8 @@ class ProductWidget(QWidget):
         layout.addLayout(btn_layout)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Stock", "Costo", "Precio"])
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Stock", "Costo", "Precio", "Editar", "Eliminar"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         layout.addWidget(self.table)
@@ -51,11 +51,19 @@ class ProductWidget(QWidget):
             products = get_all_products(session)
             self.table.setRowCount(len(products))
             for i, p in enumerate(products):
-                self.table.setItem(i, 0, QTableWidgetItem(str(p.idProd)))
+                self.table.setItem(i, 0, QTableWidgetItem(str(p.id_prod)))
                 self.table.setItem(i, 1, QTableWidgetItem(p.name))
                 self.table.setItem(i, 2, QTableWidgetItem(str(p.cant)))
                 self.table.setItem(i, 3, QTableWidgetItem(str(p.cost)))
                 self.table.setItem(i, 4, QTableWidgetItem(str(p.price)))
+
+                edit_btn = QPushButton("Editar")
+                edit_btn.clicked.connect(lambda checked, pid=p.id_prod: self._edit_product(pid))
+                self.table.setCellWidget(i, 5, edit_btn)
+
+                delete_btn = QPushButton("Eliminar")
+                delete_btn.clicked.connect(lambda checked, pid=p.id_prod: self._delete_product(pid))
+                self.table.setCellWidget(i, 6, delete_btn)
         finally:
             session.close()
 
@@ -65,7 +73,44 @@ class ProductWidget(QWidget):
             data = dialog.get_data()
             session = get_session()
             try:
-                create_product(session, data["name"], data["cost"], data["price"])
+                create_product(session, data["name"], data["cost"], data["price"], data.get("cant", 0))
+                self._load_products()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", str(e))
+            finally:
+                session.close()
+
+    def _edit_product(self, product_id: int):
+        session = get_session()
+        try:
+            from src.services.product_service import get_product
+            product = get_product(session, product_id)
+            if not product:
+                QMessageBox.warning(self, "Error", "Producto no encontrado")
+                return
+            dialog = ProductDialog(self, product)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                data = dialog.get_data()
+                update_product(session, product_id,
+                               name=data["name"],
+                               cost=data["cost"],
+                               price=data["price"],
+                               cant=data.get("cant", product.cant))
+                self._load_products()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+        finally:
+            session.close()
+
+    def _delete_product(self, product_id: int):
+        reply = QMessageBox.question(
+            self, "Confirmar", "¿Eliminar este producto?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            session = get_session()
+            try:
+                delete_product(session, product_id)
                 self._load_products()
             except Exception as e:
                 QMessageBox.critical(self, "Error", str(e))
@@ -74,11 +119,17 @@ class ProductWidget(QWidget):
 
 
 class ProductDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, product=None):
         super().__init__(parent)
-        self.setWindowTitle("Nuevo Producto")
-        self.setFixedSize(300, 200)
+        self.product = product
+        self.setWindowTitle("Editar Producto" if product else "Nuevo Producto")
+        self.setFixedSize(300, 250)
         self._setup_ui()
+        if product:
+            self.name_input.setText(product.name)
+            self.cost_input.setText(str(product.cost))
+            self.price_input.setText(str(product.price))
+            self.cant_input.setText(str(product.cant))
 
     def _setup_ui(self):
         form = QFormLayout()
@@ -94,6 +145,10 @@ class ProductDialog(QDialog):
         self.price_input = QLineEdit()
         self.price_input.setPlaceholderText("0.00")
         form.addRow("Precio:", self.price_input)
+
+        self.cant_input = QLineEdit()
+        self.cant_input.setPlaceholderText("Stock inicial (opcional)")
+        form.addRow("Stock:", self.cant_input)
 
         btn_layout = QHBoxLayout()
         save_btn = QPushButton("Guardar")
@@ -111,4 +166,5 @@ class ProductDialog(QDialog):
             "name": self.name_input.text().strip(),
             "cost": Decimal(self.cost_input.text().strip() or "0"),
             "price": Decimal(self.price_input.text().strip() or "0"),
+            "cant": int(self.cant_input.text().strip() or "0"),
         }
