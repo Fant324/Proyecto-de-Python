@@ -39,6 +39,21 @@ def get_sales_by_product(session: Session, start_date: date, end_date: date):
     ).all()
 
 
+def get_stock_profit(session: Session):
+    return session.query(
+        Product.id_prod,
+        Product.name,
+        Product.cant.label("stock"),
+        Product.price,
+        Product.cost,
+        ((Product.price - Product.cost) * Product.cant).label("expected_profit"),
+    ).filter(
+        Product.cant > 0,
+    ).order_by(
+        ((Product.price - Product.cost) * Product.cant).desc(),
+    ).all()
+
+
 def get_summary(session: Session, start_date: date, end_date: date):
     revenue_row = session.query(
         func.sum(Sell.revenue).label("total_revenue"),

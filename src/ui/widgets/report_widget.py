@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QDate
 from src.database.session import get_session
-from src.services.report_service import get_entries, get_outs, get_sells, get_sales_by_product, get_summary
+from src.services.report_service import get_entries, get_outs, get_sells, get_sales_by_product, get_stock_profit, get_summary
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "conversion_config.json")
 
@@ -124,7 +124,7 @@ class ReportWidget(QWidget):
         self._update_sell_columns(False)
 
     def _on_tab_changed(self, index):
-        show = index in (2, 4)
+        show = index in (2, 3, 4)
         self.convert_cb.setVisible(show)
         self.rate_input.setVisible(show)
 
@@ -141,6 +141,19 @@ class ReportWidget(QWidget):
             self.sell_table.setColumnCount(4)
             self.sell_table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso", "Fecha"])
         self.sell_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        if enabled:
+            self.sales_by_product_table.setColumnCount(7)
+            self.sales_by_product_table.setHorizontalHeaderLabels(
+                ["Producto", "Cant. Vendida", "Stock", "Precio", "Costo", "Ganancia Esp. (USD)", "Ganancia Esp. (CUP)"]
+            )
+        else:
+            self.sales_by_product_table.setColumnCount(6)
+            self.sales_by_product_table.setHorizontalHeaderLabels(
+                ["Producto", "Cant. Vendida", "Stock", "Precio", "Costo", "Ganancia Esp."]
+            )
+        self.sales_by_product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
         self.summary_table.setColumnCount(3 if enabled else 2)
         if enabled:
             self.summary_table.setHorizontalHeaderLabels(["Concepto", "Valor (USD)", "Valor (CUP)"])
@@ -199,12 +212,26 @@ class ReportWidget(QWidget):
                     self.sell_table.setItem(i, 2, QTableWidgetItem(f"${s.revenue}"))
                     self.sell_table.setItem(i, 3, QTableWidgetItem(str(s.date)))
 
+            stock_profit = get_stock_profit(session)
             sales_by_product = get_sales_by_product(session, start, end)
-            self._sales_by_product_data = sales_by_product
-            self.sales_by_product_table.setRowCount(len(sales_by_product))
-            for i, row in enumerate(sales_by_product):
+            self._sales_by_product_data = stock_profit
+
+            self._sold_map = {r.id_prod: r.total_sold for r in sales_by_product}
+            self.sales_by_product_table.setRowCount(len(stock_profit))
+            for i, row in enumerate(stock_profit):
+                sold = self._sold_map.get(row.id_prod, 0)
+                expected = row.price - row.cost
                 self.sales_by_product_table.setItem(i, 0, QTableWidgetItem(row.name))
-                self.sales_by_product_table.setItem(i, 1, QTableWidgetItem(str(row.total_sold)))
+                self.sales_by_product_table.setItem(i, 1, QTableWidgetItem(str(sold)))
+                self.sales_by_product_table.setItem(i, 2, QTableWidgetItem(str(row.stock)))
+                self.sales_by_product_table.setItem(i, 3, QTableWidgetItem(f"${row.price}"))
+                self.sales_by_product_table.setItem(i, 4, QTableWidgetItem(f"${row.cost}"))
+                if use_conversion:
+                    converted_profit = row.expected_profit * rate
+                    self.sales_by_product_table.setItem(i, 5, QTableWidgetItem(f"${row.expected_profit:.2f}"))
+                    self.sales_by_product_table.setItem(i, 6, QTableWidgetItem(f"${converted_profit:.2f}"))
+                else:
+                    self.sales_by_product_table.setItem(i, 5, QTableWidgetItem(f"${row.expected_profit:.2f}"))
 
             summary = get_summary(session, start, end)
             self._summary_data = summary
@@ -254,7 +281,10 @@ class ReportWidget(QWidget):
                 headers = ["ID", "Unidades", "Ingreso", "Fecha"]
         elif tab_index == 3:
             rows = self._sales_by_product_data
-            headers = ["Producto", "Cantidad Vendida"]
+            if self.convert_cb.isChecked():
+                headers = ["Producto", "Cant. Vendida", "Stock", "Precio", "Costo", "Ganancia Esp. (USD)", "Ganancia Esp. (CUP)"]
+            else:
+                headers = ["Producto", "Cant. Vendida", "Stock", "Precio", "Costo", "Ganancia Esp."]
         else:
             data = self._summary_data
             if self.convert_cb.isChecked():
@@ -278,7 +308,13 @@ class ReportWidget(QWidget):
                     else:
                         writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
                 elif tab_index == 3:
-                    writer.writerow([row.name, row.total_sold])
+                    sold_qty = self._sold_map.get(row.id_prod, 0) if hasattr(self, '_sold_map') else 0
+                    if self.convert_cb.isChecked():
+                        rate = Decimal(str(self.rate_input.value()))
+                        converted = row.expected_profit * rate
+                        writer.writerow([row.name, sold_qty, row.stock, str(row.price), str(row.cost), f"{row.expected_profit:.2f}", f"{converted:.2f}"])
+                    else:
+                        writer.writerow([row.name, sold_qty, row.stock, str(row.price), str(row.cost), f"{row.expected_profit:.2f}"])
                 else:
                     if self.convert_cb.isChecked():
                         rate = Decimal(str(self.rate_input.value()))
