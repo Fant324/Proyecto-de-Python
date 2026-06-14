@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QDate
 from src.database.session import get_session
-from src.services.report_service import get_entries, get_outs, get_sells, get_sales_by_product
+from src.services.report_service import get_entries, get_outs, get_sells, get_sales_by_product, get_summary
 
 
 class ReportWidget(QWidget):
@@ -88,6 +88,13 @@ class ReportWidget(QWidget):
         self.sales_by_product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tabs.addTab(self.sales_by_product_table, "Ventas por Producto")
 
+        self.summary_table = QTableWidget()
+        self.summary_table.setColumnCount(2)
+        self.summary_table.setHorizontalHeaderLabels(["Concepto", "Valor"])
+        self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.summary_table.setRowCount(3)
+        self.tabs.addTab(self.summary_table, "Resumen")
+
         self.setLayout(layout)
 
         self._load_reports()
@@ -164,6 +171,18 @@ class ReportWidget(QWidget):
             for i, row in enumerate(sales_by_product):
                 self.sales_by_product_table.setItem(i, 0, QTableWidgetItem(row.name))
                 self.sales_by_product_table.setItem(i, 1, QTableWidgetItem(str(row.total_sold)))
+
+            summary = get_summary(session, start, end)
+            self._summary_data = summary
+            revenue_val = summary["total_revenue"]
+            cost_val = summary["total_cost"]
+            profit_val = summary["total_profit"]
+            self.summary_table.setItem(0, 0, QTableWidgetItem("Ingreso Total"))
+            self.summary_table.setItem(0, 1, QTableWidgetItem(f"${revenue_val:.2f}"))
+            self.summary_table.setItem(1, 0, QTableWidgetItem("Costo Total"))
+            self.summary_table.setItem(1, 1, QTableWidgetItem(f"${cost_val:.2f}"))
+            self.summary_table.setItem(2, 0, QTableWidgetItem("Ganancia Total"))
+            self.summary_table.setItem(2, 1, QTableWidgetItem(f"${profit_val:.2f}"))
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
         finally:
@@ -192,9 +211,12 @@ class ReportWidget(QWidget):
                 headers = ["ID", "Unidades", "Ingreso (USD)", "Fecha", "Ingreso (CUP)"]
             else:
                 headers = ["ID", "Unidades", "Ingreso", "Fecha"]
-        else:
+        elif tab_index == 3:
             rows = self._sales_by_product_data
             headers = ["Producto", "Cantidad Vendida"]
+        else:
+            data = self._summary_data
+            headers = ["Concepto", "Valor"]
 
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -211,7 +233,11 @@ class ReportWidget(QWidget):
                         writer.writerow([row.idSell, row.cant, str(row.revenue), row.date, f"{converted:.2f}"])
                     else:
                         writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
-                else:
+                elif tab_index == 3:
                     writer.writerow([row.name, row.total_sold])
+                else:
+                    writer.writerow(["Ingreso Total", str(data["total_revenue"])])
+                    writer.writerow(["Costo Total", str(data["total_cost"])])
+                    writer.writerow(["Ganancia Total", str(data["total_profit"])])
 
         QMessageBox.information(self, "Exportado", f"Reporte guardado en:\n{path}")

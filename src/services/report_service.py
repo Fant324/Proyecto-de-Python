@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from src.services.entry_service import get_entries_by_date_range
@@ -36,3 +37,29 @@ def get_sales_by_product(session: Session, start_date: date, end_date: date):
     ).order_by(
         func.sum(ProdSell.cant).desc(),
     ).all()
+
+
+def get_summary(session: Session, start_date: date, end_date: date):
+    revenue_row = session.query(
+        func.sum(Sell.revenue).label("total_revenue"),
+    ).filter(
+        Sell.date.between(start_date, end_date),
+    ).first()
+    total_revenue = revenue_row.total_revenue or Decimal("0.00")
+
+    cost_row = session.query(
+        func.sum(Product.cost * ProdSell.cant).label("total_cost"),
+    ).join(ProdSell, ProdSell.id_prod == Product.id_prod
+    ).join(Sell, Sell.idSell == ProdSell.idSell
+    ).filter(
+        Sell.date.between(start_date, end_date),
+    ).first()
+    total_cost = cost_row.total_cost or Decimal("0.00")
+
+    total_profit = total_revenue - total_cost
+
+    return {
+        "total_revenue": total_revenue,
+        "total_cost": total_cost,
+        "total_profit": total_profit,
+    }
