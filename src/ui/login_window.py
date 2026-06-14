@@ -15,14 +15,6 @@ class LoginWindow(QWidget):
         self.setFixedSize(360, 240)
         self._setup_ui()
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        screen = self.screen().geometry()
-        self.move(
-            (screen.width() - self.width()) // 2,
-            (screen.height() - self.height()) // 2,
-        )
-
     def _setup_ui(self):
         layout = QVBoxLayout()
         layout.setContentsMargins(30, 24, 30, 24)

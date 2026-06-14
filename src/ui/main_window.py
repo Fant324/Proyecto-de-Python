@@ -1,8 +1,10 @@
+import sys
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QStackedWidget, QMessageBox,
+    QApplication,
 )
 from src.models.user import User
 
@@ -54,7 +56,22 @@ class MainWindow(QMainWindow):
         fullscreen_btn.clicked.connect(self._toggle_fullscreen)
         header_layout.addWidget(fullscreen_btn)
 
+        close_btn = QPushButton("✕")
+        close_btn.setToolTip("Salir")
+        close_btn.setFixedSize(32, 32)
+        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        close_btn.setStyleSheet(
+            "QPushButton { background-color: transparent; color: #aaaaaa; "
+            "font-size: 16px; border-radius: 4px; padding: 0px; }"
+            "QPushButton:hover { background-color: #b71c1c; color: #ffffff; }"
+        )
+        close_btn.clicked.connect(self._close_app)
+        header_layout.addWidget(close_btn)
+
         main_layout.addWidget(header_bar)
+
+    def _close_app(self):
+        QApplication.quit()
 
         content = QHBoxLayout()
         content.setContentsMargins(0, 0, 0, 0)
