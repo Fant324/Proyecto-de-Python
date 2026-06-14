@@ -1,9 +1,10 @@
 from sqlalchemy.orm import Session
 from src.models.user import User
+from src.services.auth_service import hash_password
 
 
 def create_user(session: Session, username: str, password: str, role: str = "vendedor") -> User:
-    user = User(username=username, password=password, role=role)
+    user = User(username=username, password=hash_password(password), role=role)
     session.add(user)
     session.commit()
     return user
@@ -25,6 +26,8 @@ def update_user(session: Session, user_id: int, **kwargs) -> User | None:
     user = get_user(session, user_id)
     if not user:
         return None
+    if "password" in kwargs:
+        kwargs["password"] = hash_password(kwargs["password"])
     for key, value in kwargs.items():
         if hasattr(user, key):
             setattr(user, key, value)

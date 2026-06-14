@@ -29,7 +29,8 @@ def session():
 
 @pytest.fixture
 def admin_user(session: Session) -> User:
-    user = User(username="test_admin", password="1234", role="admin")
+    from src.services.auth_service import hash_password
+    user = User(username="test_admin", password=hash_password("1234"), role="admin")
     session.add(user)
     session.flush()
     return user
@@ -37,7 +38,8 @@ def admin_user(session: Session) -> User:
 
 @pytest.fixture
 def seller_user(session: Session) -> User:
-    user = User(username="test_seller", password="1234", role="vendedor")
+    from src.services.auth_service import hash_password
+    user = User(username="test_seller", password=hash_password("1234"), role="vendedor")
     session.add(user)
     session.flush()
     return user
