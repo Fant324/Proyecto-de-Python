@@ -77,8 +77,17 @@ class MainWindow(QMainWindow):
 
         content.addWidget(menu_panel)
 
+        stack_container = QWidget()
+        stack_layout = QHBoxLayout(stack_container)
+        stack_layout.setContentsMargins(0, 0, 0, 0)
+        stack_layout.addStretch()
+
         self.stack = QStackedWidget()
-        content.addWidget(self.stack, 1)
+        self.stack.setMaximumWidth(1100)
+        stack_layout.addWidget(self.stack)
+
+        stack_layout.addStretch()
+        content.addWidget(stack_container, 1)
 
         main_layout.addLayout(content)
 
