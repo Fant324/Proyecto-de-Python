@@ -1,4 +1,5 @@
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QStackedWidget, QMessageBox,
@@ -13,6 +14,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"Inventario - {user.username} ({user.role})")
         self.resize(950, 680)
         self._setup_ui()
+        QShortcut(QKeySequence("F11"), self).activated.connect(self._toggle_fullscreen)
+
+    def _toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def _setup_ui(self):
         central = QWidget()
@@ -33,6 +41,19 @@ class MainWindow(QMainWindow):
         header.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
         header_layout.addWidget(header)
         header_layout.addStretch()
+
+        fullscreen_btn = QPushButton("⛶")
+        fullscreen_btn.setToolTip("Pantalla completa (F11)")
+        fullscreen_btn.setFixedSize(32, 32)
+        fullscreen_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        fullscreen_btn.setStyleSheet(
+            "QPushButton { background-color: transparent; color: #aaaaaa; "
+            "font-size: 18px; border-radius: 4px; padding: 0px; }"
+            "QPushButton:hover { background-color: #3a3a3a; color: #ffffff; }"
+        )
+        fullscreen_btn.clicked.connect(self._toggle_fullscreen)
+        header_layout.addWidget(fullscreen_btn)
+
         main_layout.addWidget(header_bar)
 
         content = QHBoxLayout()
@@ -88,7 +109,7 @@ class MainWindow(QMainWindow):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(
             "QPushButton#menuBtn { background-color: transparent; color: #cccccc; "
-            "text-align: left; padding: 8px 12px; border-radius: 4px; font-weight: normal; }"
+            "text-align: left; padding: 8px 12px; border-radius: 8px; font-weight: normal; }"
             "QPushButton#menuBtn:hover { background-color: #3a3a3a; }"
             "QPushButton#menuBtn:pressed { background-color: #505050; }"
         )
