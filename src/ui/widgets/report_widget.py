@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import QDate
 from src.database.session import get_session
-from src.services.report_service import get_entries, get_outs, get_sells
+from src.services.report_service import get_entries, get_outs, get_sells, get_sales_by_product
 
 
 class ReportWidget(QWidget):
@@ -68,6 +68,12 @@ class ReportWidget(QWidget):
         self.sell_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.tabs.addTab(self.sell_table, "Ventas")
 
+        self.sales_by_product_table = QTableWidget()
+        self.sales_by_product_table.setColumnCount(2)
+        self.sales_by_product_table.setHorizontalHeaderLabels(["Producto", "Cantidad Vendida"])
+        self.sales_by_product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.tabs.addTab(self.sales_by_product_table, "Ventas por Producto")
+
         self.setLayout(layout)
 
         self._load_reports()
@@ -113,6 +119,13 @@ class ReportWidget(QWidget):
                 self.sell_table.setItem(i, 1, QTableWidgetItem(str(s.cant)))
                 self.sell_table.setItem(i, 2, QTableWidgetItem(f"${s.revenue}"))
                 self.sell_table.setItem(i, 3, QTableWidgetItem(str(s.date)))
+
+            sales_by_product = get_sales_by_product(session, start, end)
+            self._sales_by_product_data = sales_by_product
+            self.sales_by_product_table.setRowCount(len(sales_by_product))
+            for i, row in enumerate(sales_by_product):
+                self.sales_by_product_table.setItem(i, 0, QTableWidgetItem(row.name))
+                self.sales_by_product_table.setItem(i, 1, QTableWidgetItem(str(row.total_sold)))
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
         finally:
@@ -135,9 +148,12 @@ class ReportWidget(QWidget):
         elif tab_index == 1:
             rows = self._outs_data
             headers = ["ID", "ID Producto", "Cantidad", "Destino", "Fecha"]
-        else:
+        elif tab_index == 2:
             rows = self._sells_data
             headers = ["ID", "Unidades", "Ingreso", "Fecha"]
+        else:
+            rows = self._sales_by_product_data
+            headers = ["Producto", "Cantidad Vendida"]
 
         with open(path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -147,7 +163,9 @@ class ReportWidget(QWidget):
                     writer.writerow([row.idEntry, row.id_prod, row.cant, row.date])
                 elif tab_index == 1:
                     writer.writerow([row.idOut, row.id_prod, row.cant, row.destination, row.date])
-                else:
+                elif tab_index == 2:
                     writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
+                else:
+                    writer.writerow([row.name, row.total_sold])
 
         QMessageBox.information(self, "Exportado", f"Reporte guardado en:\n{path}")
