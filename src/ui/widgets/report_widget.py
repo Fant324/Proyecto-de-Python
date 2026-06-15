@@ -1,28 +1,36 @@
+"""Módulo del widget de reportes por fecha con exportación CSV y conversión de moneda"""
+
+import logging
 import csv
-import os
 import json
+from pathlib import Path
 from datetime import date
 from decimal import Decimal
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QDateEdit,
     QTabWidget, QHeaderView, QMessageBox, QFileDialog,
-    QCheckBox, QDoubleSpinBox,
+    QCheckBox, QDoubleSpinBox, QSizePolicy,
 )
 from PyQt6.QtCore import QDate
 from src.database.session import get_session
 from src.services.report_service import get_entries, get_outs, get_sells, get_sales_by_product, get_stock_profit, get_summary
 
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "conversion_config.json")
+logger = logging.getLogger(__name__)
+
+CONFIG_PATH = Path(__file__).resolve().parent.parent.parent / "conversion_config.json"
 
 
 class ReportWidget(QWidget):
+    """Widget que muestra reportes de entradas, salidas, ventas, productos y resumen con filtro por fechas"""
     def __init__(self, user):
+        """Inicializa el widget y configura la interfaz"""
         super().__init__()
         self.current_user = user
         self._setup_ui()
 
     def _load_rate(self):
+        """Carga la tasa de conversión desde el archivo de configuración"""
         try:
             with open(CONFIG_PATH) as f:
                 data = json.load(f)
@@ -31,6 +39,7 @@ class ReportWidget(QWidget):
             return 24.0
 
     def _save_rate(self, rate):
+        """Guarda la tasa de conversión en el archivo de configuración"""
         try:
             with open(CONFIG_PATH, "w") as f:
                 json.dump({"rate": rate}, f)
@@ -38,9 +47,10 @@ class ReportWidget(QWidget):
             pass
 
     def _setup_ui(self):
+        """Construye la interfaz con pestañas de reportes, filtros de fecha y opciones de exportación"""
         layout = QVBoxLayout()
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         header = QLabel("Reportes por Fecha")
         header.setObjectName("header")
@@ -84,9 +94,11 @@ class ReportWidget(QWidget):
         layout.addLayout(date_layout)
 
         self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
+        self.tabs.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        layout.addWidget(self.tabs, 1)
 
         self.entry_table = QTableWidget()
+        self.entry_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.entry_table.setColumnCount(4)
         self.entry_table.setHorizontalHeaderLabels(["ID", "Producto", "Cantidad", "Fecha"])
         self.entry_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -95,6 +107,7 @@ class ReportWidget(QWidget):
         self.tabs.addTab(self.entry_table, "Entradas")
 
         self.out_table = QTableWidget()
+        self.out_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.out_table.setColumnCount(5)
         self.out_table.setHorizontalHeaderLabels(["ID", "Producto", "Cantidad", "Destino", "Fecha"])
         self.out_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -103,6 +116,7 @@ class ReportWidget(QWidget):
         self.tabs.addTab(self.out_table, "Salidas")
 
         self.sell_table = QTableWidget()
+        self.sell_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.sell_table.setColumnCount(4)
         self.sell_table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso", "Fecha"])
         self.sell_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -111,6 +125,7 @@ class ReportWidget(QWidget):
         self.tabs.addTab(self.sell_table, "Ventas")
 
         self.sales_by_product_table = QTableWidget()
+        self.sales_by_product_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.sales_by_product_table.setColumnCount(2)
         self.sales_by_product_table.setHorizontalHeaderLabels(["Producto", "Cantidad Vendida"])
         self.sales_by_product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -119,6 +134,7 @@ class ReportWidget(QWidget):
         self.tabs.addTab(self.sales_by_product_table, "Ventas por Producto")
 
         self.product_table = QTableWidget()
+        self.product_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.product_table.setColumnCount(5)
         self.product_table.setHorizontalHeaderLabels(["Producto", "Stock", "Precio", "Costo", "Ganancia Esp."])
         self.product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -127,6 +143,7 @@ class ReportWidget(QWidget):
         self.tabs.addTab(self.product_table, "Productos")
 
         self.summary_table = QTableWidget()
+        self.summary_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.summary_table.setColumnCount(2)
         self.summary_table.setHorizontalHeaderLabels(["Concepto", "Valor"])
         self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -143,16 +160,19 @@ class ReportWidget(QWidget):
         self._update_sell_columns(False)
 
     def _on_tab_changed(self, index):
+        """Muestra u oculta los controles de conversión según la pestaña activa"""
         show = index in (2, 4, 5)
         self.convert_cb.setVisible(show)
         self.rate_input.setVisible(show)
 
     def _on_toggle_conversion(self, enabled):
+        """Activa o desactiva la conversión de moneda y recarga los reportes"""
         self.rate_input.setEnabled(enabled)
         self._update_sell_columns(enabled)
         self._load_reports()
 
     def _update_sell_columns(self, enabled):
+        """Ajusta las columnas de las tablas según si la conversión está activa o no"""
         if enabled:
             self.sell_table.setColumnCount(5)
             self.sell_table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso (USD)", "Fecha", "Ingreso (CUP)"])
@@ -181,6 +201,7 @@ class ReportWidget(QWidget):
         self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
     def _load_reports(self):
+        """Carga y muestra todos los reportes según el rango de fechas seleccionado"""
         self.entry_table.setSortingEnabled(False)
         self.out_table.setSortingEnabled(False)
         self.sell_table.setSortingEnabled(False)
@@ -278,7 +299,8 @@ class ReportWidget(QWidget):
                 self.summary_table.setItem(1, 2, QTableWidgetItem(f"${converted_cost:.2f}"))
                 self.summary_table.setItem(2, 2, QTableWidgetItem(f"${converted_profit:.2f}"))
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            logger.exception("Error al cargar reportes:")
+            QMessageBox.critical(self, "Error", f"Error al cargar reportes: {e}")
         finally:
             session.close()
             self.entry_table.setSortingEnabled(True)
@@ -288,6 +310,7 @@ class ReportWidget(QWidget):
             self.product_table.setSortingEnabled(True)
 
     def _export_csv(self):
+        """Exporta el reporte de la pestaña actual a un archivo CSV"""
         tab_index = self.tabs.currentIndex()
         tab_name = self.tabs.tabText(tab_index).lower()
 

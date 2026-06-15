@@ -62,6 +62,14 @@ PYTHONPATH=. python src/seed.py
 
 Esto crea las tablas y un usuario administrador por defecto.
 
+### 6. (Opcional) Cargar datos de prueba
+
+```bash
+psql -U postgres -d stockmanager -f seed_data.sql
+```
+
+Esto inserta 15 productos de ejemplo (laptops, periféricos, etc.).
+
 ## Ejecución
 
 ### Opción 1: Script automatizado
@@ -70,20 +78,42 @@ Esto crea las tablas y un usuario administrador por defecto.
 ./run.sh
 ```
 
-### Opción 2: Manual
+### Opción 2: Paso a paso
 
 ```bash
 source venv/bin/activate
+PYTHONPATH=. python src/seed.py   # solo la primera vez
 PYTHONPATH=. python src/main.py
 ```
 
 ## Usuarios por defecto
 
-| Usuario | Contraseña | Rol |
-|---------|-----------|-----|
-| admin   | admin     | Admin |
+| Usuario | Contraseña | Rol  |
+|---------|-----------|------|
+| admin   | admin     | Admin|
 
 Puedes crear más usuarios desde el panel de administración.
+
+## Recrear la base de datos desde cero
+
+```bash
+# 1. Eliminar y crear la base de datos
+dropdb stockmanager
+createdb stockmanager
+
+# 2. Iniciar la app (crea las tablas automáticamente)
+PYTHONPATH=. python src/main.py
+# Presiona Ctrl+C una vez que veas "Base de datos lista"
+
+# 3. Sembrar usuario admin y datos de prueba
+PYTHONPATH=. python src/seed.py
+psql -U postgres -d stockmanager -f seed_data.sql
+
+# 4. Ejecutar normalmente
+PYTHONPATH=. python src/main.py
+```
+
+O simplemente usar `run.sh` que hace todo automáticamente.
 
 ## Estructura del proyecto
 

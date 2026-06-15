@@ -1,22 +1,30 @@
+"""Módulo del widget de registro de ventas"""
+
+import logging
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
     QFormLayout, QDialog, QMessageBox, QDateEdit,
-    QHeaderView, QGroupBox,
+    QHeaderView, QGroupBox, QSizePolicy,
 )
 from src.database.session import get_session
 from src.services.sell_service import register_sell, get_sells
 
+logger = logging.getLogger(__name__)
+
 
 class SellWidget(QWidget):
+    """Widget que lista las ventas y permite registrar nuevas ventas"""
     def __init__(self, user):
+        """Inicializa el widget y carga la lista de ventas"""
         super().__init__()
         self.current_user = user
         self._setup_ui()
         self._load_sells()
 
     def _setup_ui(self):
+        """Construye la interfaz con tabla de ventas y botones"""
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
@@ -40,16 +48,18 @@ class SellWidget(QWidget):
         layout.addLayout(btn_layout)
 
         self.table = QTableWidget()
+        self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["ID", "Unidades", "Ingreso", "Fecha"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
-        layout.addWidget(self.table)
+        layout.addWidget(self.table, 1)
 
         self.setLayout(layout)
 
     def _load_sells(self):
+        """Obtiene las ventas desde la base de datos y las muestra en la tabla"""
         session = get_session()
         try:
             sells = get_sells(session)
@@ -65,6 +75,7 @@ class SellWidget(QWidget):
             session.close()
 
     def _add_sell(self):
+        """Abre un diálogo para crear una nueva venta y la registra en la BD"""
         dialog = SellDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             session = get_session()
@@ -73,15 +84,20 @@ class SellWidget(QWidget):
                 register_sell(session, data["items"], data["date"])
                 self._load_sells()
             except ValueError as e:
+                logger.exception("Error de validación al registrar venta:")
                 QMessageBox.warning(self, "Error", str(e))
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                logger.exception("Error inesperado al registrar venta:")
+                QMessageBox.critical(self, "Error", f"Error inesperado: {e}")
             finally:
                 session.close()
 
 
 class SellDialog(QDialog):
+    """Diálogo para crear una venta con múltiples productos, cantidades y fecha"""
+
     def __init__(self, parent=None):
+        """Inicializa el diálogo con la lista de productos y el selector de fecha"""
         super().__init__(parent)
         self.setWindowTitle("Nueva Venta")
         self.setFixedSize(420, 380)
@@ -89,6 +105,7 @@ class SellDialog(QDialog):
         self._setup_ui()
 
     def _setup_ui(self):
+        """Construye el formulario del diálogo con tabla de productos y campos"""
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(10)
@@ -122,11 +139,12 @@ class SellDialog(QDialog):
         layout.addWidget(item_group)
 
         self.items_list = QTableWidget()
+        self.items_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.items_list.setColumnCount(3)
         self.items_list.setHorizontalHeaderLabels(["Producto", "Cantidad", ""])
         self.items_list.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.items_list.setAlternatingRowColors(True)
-        layout.addWidget(self.items_list)
+        layout.addWidget(self.items_list, 1)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
@@ -144,6 +162,7 @@ class SellDialog(QDialog):
         self.setLayout(layout)
 
     def _add_item(self):
+        """Agrega un producto con su cantidad a la lista de items de la venta"""
         try:
             pid_text = self.prod_input.text().strip()
             if not pid_text:
@@ -165,9 +184,11 @@ class SellDialog(QDialog):
             self.prod_input.clear()
             self.qty_input.clear()
         except ValueError as e:
+            logger.exception("Error de validación al agregar producto a venta:")
             QMessageBox.warning(self, "Error", str(e))
 
     def get_data(self):
+        """Valida y retorna los datos de la venta (items y fecha) como diccionario"""
         if not self.items:
             raise ValueError("Productos: debe agregar al menos un producto a la venta")
         return {

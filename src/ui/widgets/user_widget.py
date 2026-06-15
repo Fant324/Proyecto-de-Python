@@ -1,8 +1,12 @@
+"""Módulo del widget de gestión de usuarios (solo admin)"""
+
+import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
     QFormLayout, QComboBox, QDialog, QMessageBox, QHeaderView,
+    QSizePolicy,
 )
 from src.database.session import get_session
 from src.services.auth_service import require_admin
@@ -11,9 +15,13 @@ from src.services.user_service import (
 )
 from src.models.user import User
 
+logger = logging.getLogger(__name__)
+
 
 class UserWidget(QWidget):
+    """Widget que lista los usuarios y permite crear y eliminar usuarios (solo admin)"""
     def __init__(self, user: User):
+        """Inicializa el widget, verifica permisos de admin y carga la lista de usuarios"""
         super().__init__()
         self.current_user = user
         require_admin(self.current_user)
@@ -21,6 +29,7 @@ class UserWidget(QWidget):
         self._load_users()
 
     def _setup_ui(self):
+        """Construye la interfaz con tabla de usuarios y botones"""
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
@@ -44,16 +53,18 @@ class UserWidget(QWidget):
         layout.addLayout(btn_layout)
 
         self.table = QTableWidget()
+        self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["ID", "Usuario", "Rol", "Acción"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
-        layout.addWidget(self.table)
+        layout.addWidget(self.table, 1)
 
         self.setLayout(layout)
 
     def _load_users(self):
+        """Obtiene los usuarios desde la base de datos y los muestra en la tabla"""
         session = get_session()
         try:
             users = get_all_users(session)
@@ -73,9 +84,11 @@ class UserWidget(QWidget):
             session.close()
 
     def _add_user(self):
+        """Abre un diálogo para crear un nuevo usuario y lo registra en la BD"""
         try:
             require_admin(self.current_user)
         except PermissionError as e:
+            logger.exception("Error de permisos al agregar usuario:")
             QMessageBox.warning(self, "Error", str(e))
             return
         dialog = UserDialog(self)
@@ -86,11 +99,13 @@ class UserWidget(QWidget):
                 create_user(session, data["username"], data["password"], data["role"])
                 self._load_users()
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                logger.exception("Error inesperado al crear usuario:")
+                QMessageBox.critical(self, "Error", f"Error inesperado: {e}")
             finally:
                 session.close()
 
     def _delete_user(self, user_id: int):
+        """Elimina un usuario tras confirmación, con validación de permisos"""
         reply = QMessageBox.question(
             self, "Confirmar", "¿Eliminar este usuario?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -101,21 +116,27 @@ class UserWidget(QWidget):
                 delete_user(session, user_id, self.current_user)
                 self._load_users()
             except ValueError as e:
+                logger.exception("Error de validación al eliminar usuario:")
                 QMessageBox.warning(self, "Error", str(e))
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                logger.exception("Error inesperado al eliminar usuario:")
+                QMessageBox.critical(self, "Error", f"Error inesperado: {e}")
             finally:
                 session.close()
 
 
 class UserDialog(QDialog):
+    """Diálogo para ingresar los datos de un nuevo usuario (usuario, contraseña, rol)"""
+
     def __init__(self, parent=None):
+        """Inicializa el diálogo con campos para usuario, contraseña y rol"""
         super().__init__(parent)
         self.setWindowTitle("Nuevo Usuario")
         self.setFixedSize(320, 220)
         self._setup_ui()
 
     def _setup_ui(self):
+        """Construye el formulario del diálogo"""
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(10)
@@ -154,6 +175,7 @@ class UserDialog(QDialog):
         self.setLayout(layout)
 
     def get_data(self):
+        """Valida y retorna los datos del formulario como diccionario"""
         username = self.username_input.text().strip()
         if not username:
             raise ValueError("Usuario: el nombre de usuario no puede estar vacío")

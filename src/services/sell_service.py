@@ -1,3 +1,6 @@
+"""Módulo de servicios de ventas - registro de ventas, cálculo de ingresos y descuento de stock"""
+
+import logging
 from datetime import date
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -6,12 +9,15 @@ from src.models.prod_sell import ProdSell
 from src.services.stock_service import get_stock, remove_stock
 from src.services.product_service import get_product
 
+logger = logging.getLogger(__name__)
+
 
 def register_sell(
     session: Session,
     items: list[dict],
     sell_date: date | None = None,
 ) -> Sell:
+    """Registra una venta validando stock de cada producto, calcula ingresos totales, descuenta stock y persiste"""
     if not items:
         raise ValueError("Productos: debe incluir al menos un producto en la venta")
     total_units = 0
@@ -60,14 +66,17 @@ def register_sell(
 
 
 def get_sells(session: Session) -> list[Sell]:
+    """Obtiene todas las ventas ordenadas por fecha descendente y luego por ID"""
     return session.query(Sell).order_by(Sell.date.desc(), Sell.idSell.desc()).all()
 
 
 def get_sells_by_date_range(session: Session, start_date: date, end_date: date) -> list[Sell]:
+    """Filtra ventas dentro de un rango de fechas, ordenadas por fecha e ID descendentes"""
     return session.query(Sell).filter(
         Sell.date.between(start_date, end_date),
     ).order_by(Sell.date.desc(), Sell.idSell.desc()).all()
 
 
 def get_prod_sells_by_sell(session: Session, sell_id: int) -> list[ProdSell]:
+    """Obtiene los productos asociados a una venta específica por el ID de la venta"""
     return session.query(ProdSell).filter(ProdSell.idSell == sell_id).all()

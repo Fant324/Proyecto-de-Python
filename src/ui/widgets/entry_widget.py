@@ -1,17 +1,25 @@
+"""Módulo del widget de registro de entradas de inventario"""
+
+import logging
 from datetime import date
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QLineEdit,
     QFormLayout, QDialog, QMessageBox, QDateEdit, QHeaderView,
+    QSizePolicy,
 )
 from src.database.session import get_session
 from src.services.entry_service import register_entry, get_entries
 from src.services.product_service import get_all_products
 
+logger = logging.getLogger(__name__)
+
 
 class EntryWidget(QWidget):
+    """Widget que lista las entradas y permite agregar nuevas entradas al inventario"""
     def __init__(self, user):
+        """Inicializa el widget y carga la lista de entradas"""
         super().__init__()
         self.current_user = user
         self._setup_ui()
@@ -41,16 +49,18 @@ class EntryWidget(QWidget):
         layout.addLayout(btn_layout)
 
         self.table = QTableWidget()
+        self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["ID", "Producto", "Cantidad", "Fecha"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
-        layout.addWidget(self.table)
+        layout.addWidget(self.table, 1)
 
         self.setLayout(layout)
 
     def _load_entries(self):
+        """Obtiene las entradas desde la base de datos y las muestra en la tabla"""
         session = get_session()
         try:
             entries = get_entries(session)
@@ -69,6 +79,7 @@ class EntryWidget(QWidget):
             session.close()
 
     def _add_entry(self):
+        """Abre un diálogo para crear una nueva entrada y la registra en la BD"""
         dialog = EntryDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             session = get_session()
@@ -77,19 +88,24 @@ class EntryWidget(QWidget):
                 register_entry(session, data["product_id"], data["cant"], data["date"])
                 self._load_entries()
             except Exception as e:
-                QMessageBox.critical(self, "Error", str(e))
+                logger.exception("Error inesperado al registrar entrada:")
+                QMessageBox.critical(self, "Error", f"Error inesperado: {e}")
             finally:
                 session.close()
 
 
 class EntryDialog(QDialog):
+    """Diálogo para ingresar los datos de una nueva entrada (producto, cantidad, fecha)"""
+
     def __init__(self, parent=None):
+        """Inicializa el diálogo con campos para producto, cantidad y fecha"""
         super().__init__(parent)
         self.setWindowTitle("Nueva Entrada")
         self.setFixedSize(320, 220)
         self._setup_ui()
 
     def _setup_ui(self):
+        """Construye el formulario del diálogo"""
         layout = QVBoxLayout()
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(10)
@@ -128,6 +144,7 @@ class EntryDialog(QDialog):
         self.setLayout(layout)
 
     def get_data(self):
+        """Valida y retorna los datos del formulario como diccionario"""
         product_text = self.product_input.text().strip()
         if not product_text:
             raise ValueError("ID Producto: debe ingresar un ID de producto")

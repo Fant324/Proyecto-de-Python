@@ -1,7 +1,12 @@
+"""Módulo de configuración de base de datos - conexión PostgreSQL y fábrica de sesiones"""
+
+import logging
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -18,4 +23,5 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
 def get_session() -> Session:
+    """Crea y retorna una nueva sesión de base de datos usando SessionLocal"""
     return SessionLocal()

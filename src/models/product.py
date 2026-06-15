@@ -1,8 +1,14 @@
+"""Modelo de producto - tabla 'product' para el catálogo de productos del inventario"""
+
+import logging
 from sqlalchemy import Column, Integer, String, Numeric
 from src.database.base import Base
 
+logger = logging.getLogger(__name__)
+
 
 class Product(Base):
+    """Modelo que representa un producto con nombre, cantidad en stock, costo y precio de venta"""
     __tablename__ = "product"
 
     id_prod = Column(Integer, primary_key=True, autoincrement=True)
