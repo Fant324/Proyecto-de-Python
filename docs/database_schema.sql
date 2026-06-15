@@ -2,6 +2,11 @@
 -- SCRIPT COMPLETO: CREACIÓN DE BASE DE DATOS + DATOS DE PRUEBA
 -- Sistema de Gestión de Inventario
 -- Motor: PostgreSQL
+--
+-- NOTA: Los scripts ejecutables están en la carpeta sql/ de la raíz.
+--   sql/schema.sql  → CREATE TABLE
+--   sql/seed.sql    → Datos de prueba
+--   python src/seed.py  → Ejecuta ambos automáticamente
 -- ============================================================
 
 -- ============================================================
