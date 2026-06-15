@@ -21,12 +21,15 @@ Aplicación de escritorio en **3 capas**: Presentación (PyQt6), Servicios (lóg
 ```
 ├── src/
 │   ├── main.py              # Punto de entrada
-│   ├── seed.py              # Carga usuario admin inicial
+│   ├── seed.py              # Carga datos iniciales (ejecuta sql/schema.sql + sql/seed.sql)
 │   ├── database/            # Conexión y sesión SQLAlchemy
 │   ├── models/              # Modelos ORM (User, Product, Entry, Out, Sell, ProdSell)
 │   ├── services/            # Lógica de negocio (auth, cruds, stock, reportes)
 │   └── ui/                  # Interfaces (login, main, title bar, widgets)
 │       └── widgets/         # Pantallas: productos, entradas, salidas, ventas, reportes, usuarios
+├── sql/
+│   ├── schema.sql           # CREATE TABLE de todas las tablas
+│   └── seed.sql             # Datos de prueba (admin + 15 productos + movimientos)
 ├── docs/                    # Documentación
 ├── alembic/                 # Migraciones
 ├── requirements.txt
@@ -62,7 +65,14 @@ source venv/bin/activate      # Linux
 venv\Scripts\activate.bat     # Windows
 pip install -r requirements.txt
 cp .env.example .env          # Editar datos de PostgreSQL
-python src/seed.py            # Crea usuario admin/admin
+python src/seed.py            # Crea tablas + usuario admin/admin + datos de prueba
+python src/main.py
+```
+
+**Alternativa con psql (sin seed.py):**
+```bash
+psql -U postgres -d stockmanager -f sql/schema.sql
+psql -U postgres -d stockmanager -f sql/seed.sql
 python src/main.py
 ```
 
@@ -103,19 +113,22 @@ Menú lateral izquierdo con las siguientes opciones (según el rol):
 
 #### d) Ventas
 1. Ir a **Ventas** → **Nueva Venta**.
-2. Agregar:
+2. Agregar productos:
    - ID: `1` (Laptop), Cant: `1`
    - ID: `2` (Mouse), Cant: `3`
-3. Click **Guardar Venta**.
-4. Verificar que la venta aparece en la tabla y el stock se actualizó.
-5. Desde **Reportes** → pestaña **Ventas** → click **Actualizar** para verla reflejada.
+3. Si agregas el mismo producto dos veces, la cantidad se suma automáticamente (ej: agrega ID `2` otra vez con Cant `2` → queda Mouse con Cant `5`).
+4. Click **Guardar Venta**.
+5. Verificar que la venta aparece en la tabla y el stock se actualizó.
+6. Desde **Reportes** → pestaña **Ventas** → click **Actualizar** para verla reflejada.
 
 #### e) Reportes
 1. Ir a **Reportes**.
 2. Fechas: seleccionar un rango (ej: desde 2026-05-01 hasta hoy).
 3. Click **Filtrar**.
-4. Navegar por las pestañas: Productos, Entradas, Salidas, Ventas, Ventas por Producto, Resumen.
-5. Marcar **Convertir a CUP** → aparece columna extra con valores convertidos.
+4. Navegar por las pestañas en este orden: **Productos**, **Entradas**, **Salidas**, **Ventas**, **Ventas por Producto**, **Resumen**.
+   - Las pestañas **Productos**, **Ventas por Producto** y **Resumen** NO muestran filtro de fecha (son datos globales).
+   - Las pestañas **Entradas**, **Salidas** y **Ventas** SÍ muestran filtro de fecha.
+5. Marcar **Convertir a CUP** → aparece columna extra con valores convertidos en Productos, Ventas y Resumen.
 6. Click **Actualizar** para refrescar datos tras cambios en otras pantallas.
 7. Click **Exportar CSV** para descargar la pestaña activa.
 
