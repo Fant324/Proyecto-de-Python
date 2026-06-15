@@ -52,7 +52,7 @@ class ReportWidget(QWidget):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
-        header = QLabel("Reportes por Fecha")
+        header = QLabel("Reportes")
         header.setObjectName("header")
         layout.addWidget(header)
 
