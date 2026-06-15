@@ -78,6 +78,11 @@ class ReportWidget(QWidget):
         date_layout.addWidget(self.filter_btn)
         top_bar.addWidget(self.date_container)
 
+        self.refresh_btn = QPushButton("Actualizar")
+        self.refresh_btn.setObjectName("primary")
+        self.refresh_btn.clicked.connect(self._load_reports)
+        top_bar.addWidget(self.refresh_btn)
+
         self.export_btn = QPushButton("Exportar CSV")
         self.export_btn.clicked.connect(self._export_csv)
         top_bar.addWidget(self.export_btn)

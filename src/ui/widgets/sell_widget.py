@@ -174,6 +174,16 @@ class SellDialog(QDialog):
             qty = int(qty_text)
             if qty <= 0:
                 raise ValueError("Cantidad: debe ser mayor a cero")
+            for item in self.items:
+                if item["product_id"] == pid:
+                    item["quantity"] += qty
+                    row = self.items.index(item)
+                    self.items_list.setSortingEnabled(False)
+                    self.items_list.setItem(row, 1, QTableWidgetItem(str(item["quantity"])))
+                    self.items_list.setSortingEnabled(True)
+                    self.prod_input.clear()
+                    self.qty_input.clear()
+                    return
             self.items.append({"product_id": pid, "quantity": qty})
             row = self.items_list.rowCount()
             self.items_list.setSortingEnabled(False)
