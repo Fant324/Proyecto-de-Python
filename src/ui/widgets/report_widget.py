@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableWidget, QTableWidgetItem, QLabel, QDateEdit,
     QTabWidget, QHeaderView, QMessageBox, QFileDialog,
-    QCheckBox, QDoubleSpinBox, QSizePolicy,
+    QCheckBox, QDoubleSpinBox, QAbstractSpinBox, QSizePolicy,
 )
 from PyQt6.QtCore import QDate
 from src.database.session import get_session
@@ -56,46 +56,63 @@ class ReportWidget(QWidget):
         header.setObjectName("header")
         layout.addWidget(header)
 
-        date_layout = QHBoxLayout()
+        top_bar = QHBoxLayout()
+        top_bar.setSpacing(6)
+
+        self.date_container = QWidget()
+        date_layout = QHBoxLayout(self.date_container)
+        date_layout.setContentsMargins(0, 0, 0, 0)
+        date_layout.setSpacing(6)
         date_layout.addWidget(QLabel("Desde:"))
         self.start_date = QDateEdit()
         self.start_date.setDate(QDate.currentDate().addDays(-30))
         self.start_date.setCalendarPopup(True)
         date_layout.addWidget(self.start_date)
-
         date_layout.addWidget(QLabel("Hasta:"))
         self.end_date = QDateEdit()
         self.end_date.setDate(QDate.currentDate())
         self.end_date.setCalendarPopup(True)
         date_layout.addWidget(self.end_date)
-
         self.filter_btn = QPushButton("Filtrar")
         self.filter_btn.clicked.connect(self._load_reports)
         date_layout.addWidget(self.filter_btn)
+        top_bar.addWidget(self.date_container)
 
         self.export_btn = QPushButton("Exportar CSV")
         self.export_btn.clicked.connect(self._export_csv)
-        date_layout.addWidget(self.export_btn)
+        top_bar.addWidget(self.export_btn)
 
         self.convert_cb = QCheckBox("Convertir a CUP")
         self.convert_cb.toggled.connect(self._on_toggle_conversion)
-        date_layout.addWidget(self.convert_cb)
+        top_bar.addWidget(self.convert_cb)
 
         saved_rate = self._load_rate()
         self.rate_input = QDoubleSpinBox()
-        self.rate_input.setDecimals(4)
+        self.rate_input.setDecimals(0)
         self.rate_input.setRange(0.0001, 999999.0)
         self.rate_input.setValue(saved_rate)
         self.rate_input.setPrefix("Tasa: ")
+        self.rate_input.setMinimumWidth(150)
+        self.rate_input.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.PlusMinus)
         self.rate_input.setEnabled(False)
         self.rate_input.valueChanged.connect(lambda v: self._save_rate(v))
-        date_layout.addWidget(self.rate_input)
+        top_bar.addWidget(self.rate_input)
 
-        layout.addLayout(date_layout)
+        top_bar.addStretch()
+        layout.addLayout(top_bar)
 
         self.tabs = QTabWidget()
         self.tabs.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(self.tabs, 1)
+
+        self.product_table = QTableWidget()
+        self.product_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.product_table.setColumnCount(5)
+        self.product_table.setHorizontalHeaderLabels(["Producto", "Stock", "Precio", "Costo", "Ganancia Esp."])
+        self.product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.product_table.setAlternatingRowColors(True)
+        self.product_table.setSortingEnabled(True)
+        self.tabs.addTab(self.product_table, "Productos")
 
         self.entry_table = QTableWidget()
         self.entry_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -133,15 +150,6 @@ class ReportWidget(QWidget):
         self.sales_by_product_table.setSortingEnabled(True)
         self.tabs.addTab(self.sales_by_product_table, "Ventas por Producto")
 
-        self.product_table = QTableWidget()
-        self.product_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.product_table.setColumnCount(5)
-        self.product_table.setHorizontalHeaderLabels(["Producto", "Stock", "Precio", "Costo", "Ganancia Esp."])
-        self.product_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.product_table.setAlternatingRowColors(True)
-        self.product_table.setSortingEnabled(True)
-        self.tabs.addTab(self.product_table, "Productos")
-
         self.summary_table = QTableWidget()
         self.summary_table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.summary_table.setColumnCount(2)
@@ -160,10 +168,12 @@ class ReportWidget(QWidget):
         self._update_sell_columns(False)
 
     def _on_tab_changed(self, index):
-        """Muestra u oculta los controles de conversión según la pestaña activa"""
-        show = index in (2, 4, 5)
-        self.convert_cb.setVisible(show)
-        self.rate_input.setVisible(show)
+        """Muestra u oculta filtros de fecha y conversión según la pestaña activa"""
+        show_dates = index in (1, 2, 3)
+        self.date_container.setVisible(show_dates)
+        show_conversion = index in (0, 3, 5)
+        self.convert_cb.setVisible(show_conversion)
+        self.rate_input.setVisible(show_conversion)
 
     def _on_toggle_conversion(self, enabled):
         """Activa o desactiva la conversión de moneda y recarga los reportes"""
@@ -322,26 +332,26 @@ class ReportWidget(QWidget):
             return
 
         if tab_index == 0:
-            rows = self._entries_data
-            headers = ["ID", "ID Producto", "Cantidad", "Fecha"]
-        elif tab_index == 1:
-            rows = self._outs_data
-            headers = ["ID", "ID Producto", "Cantidad", "Destino", "Fecha"]
-        elif tab_index == 2:
-            rows = self._sells_data
-            if self.convert_cb.isChecked():
-                headers = ["ID", "Unidades", "Ingreso (USD)", "Fecha", "Ingreso (CUP)"]
-            else:
-                headers = ["ID", "Unidades", "Ingreso", "Fecha"]
-        elif tab_index == 3:
-            rows = self._sales_by_product_data
-            headers = ["Producto", "Cantidad Vendida"]
-        elif tab_index == 5:
             rows = self._product_data
             if self.convert_cb.isChecked():
                 headers = ["Producto", "Stock", "Precio", "Costo", "Ganancia Esp. (USD)", "Ganancia Esp. (CUP)"]
             else:
                 headers = ["Producto", "Stock", "Precio", "Costo", "Ganancia Esp."]
+        elif tab_index == 1:
+            rows = self._entries_data
+            headers = ["ID", "ID Producto", "Cantidad", "Fecha"]
+        elif tab_index == 2:
+            rows = self._outs_data
+            headers = ["ID", "ID Producto", "Cantidad", "Destino", "Fecha"]
+        elif tab_index == 3:
+            rows = self._sells_data
+            if self.convert_cb.isChecked():
+                headers = ["ID", "Unidades", "Ingreso (USD)", "Fecha", "Ingreso (CUP)"]
+            else:
+                headers = ["ID", "Unidades", "Ingreso", "Fecha"]
+        elif tab_index == 4:
+            rows = self._sales_by_product_data
+            headers = ["Producto", "Cantidad Vendida"]
         else:
             data = self._summary_data
             if self.convert_cb.isChecked():
@@ -354,25 +364,25 @@ class ReportWidget(QWidget):
             writer.writerow(headers)
             for row in rows:
                 if tab_index == 0:
-                    writer.writerow([row.idEntry, row.id_prod, row.cant, row.date])
-                elif tab_index == 1:
-                    writer.writerow([row.idOut, row.id_prod, row.cant, row.destination, row.date])
-                elif tab_index == 2:
-                    if self.convert_cb.isChecked():
-                        rate = Decimal(str(self.rate_input.value()))
-                        converted = row.revenue * rate
-                        writer.writerow([row.idSell, row.cant, str(row.revenue), row.date, f"{converted:.2f}"])
-                    else:
-                        writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
-                elif tab_index == 3:
-                    writer.writerow([row.name, row.total_sold])
-                elif tab_index == 5:
                     if self.convert_cb.isChecked():
                         rate = Decimal(str(self.rate_input.value()))
                         converted = row.expected_profit * rate
                         writer.writerow([row.name, row.stock, str(row.price), str(row.cost), f"{row.expected_profit:.2f}", f"{converted:.2f}"])
                     else:
                         writer.writerow([row.name, row.stock, str(row.price), str(row.cost), f"{row.expected_profit:.2f}"])
+                elif tab_index == 1:
+                    writer.writerow([row.idEntry, row.id_prod, row.cant, row.date])
+                elif tab_index == 2:
+                    writer.writerow([row.idOut, row.id_prod, row.cant, row.destination, row.date])
+                elif tab_index == 3:
+                    if self.convert_cb.isChecked():
+                        rate = Decimal(str(self.rate_input.value()))
+                        converted = row.revenue * rate
+                        writer.writerow([row.idSell, row.cant, str(row.revenue), row.date, f"{converted:.2f}"])
+                    else:
+                        writer.writerow([row.idSell, row.cant, str(row.revenue), row.date])
+                elif tab_index == 4:
+                    writer.writerow([row.name, row.total_sold])
                 else:
                     if self.convert_cb.isChecked():
                         rate = Decimal(str(self.rate_input.value()))

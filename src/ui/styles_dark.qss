@@ -68,7 +68,7 @@ QPushButton#primary {
     background-color: #2a6d8f;
 }
 
-QLineEdit, QTextEdit, QDateEdit, QComboBox, QDoubleSpinBox {
+QLineEdit, QTextEdit, QDateEdit, QComboBox {
     border: 1px solid #2c3e4e;
     border-radius: 8px;
     padding: 6px;
@@ -77,6 +77,18 @@ QLineEdit, QTextEdit, QDateEdit, QComboBox, QDoubleSpinBox {
     selection-background-color: #2a5f6b;
 }
 QLineEdit:focus, QDateEdit:focus, QComboBox:focus {
+    border: 1px solid #4a6f8a;
+}
+
+QDoubleSpinBox {
+    border: 1px solid #2c3e4e;
+    border-radius: 3px;
+    padding: 5px 6px;
+    background-color: #1a2530;
+    color: #e0e5ec;
+    selection-background-color: #2a5f6b;
+}
+QDoubleSpinBox:focus {
     border: 1px solid #4a6f8a;
 }
 

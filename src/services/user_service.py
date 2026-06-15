@@ -50,8 +50,10 @@ def update_user(session: Session, user_id: int, **kwargs) -> User | None:
 
 
 def delete_user(session: Session, user_id: int, current_user: User) -> bool:
-    """Elimina un usuario previa verificación de permisos de admin; impide eliminar al último administrador"""
+    """Elimina un usuario previa verificación de permisos de admin; impide eliminar al último administrador o a sí mismo"""
     require_admin(current_user)
+    if user_id == current_user.id:
+        raise ValueError("No puedes eliminarte a ti mismo")
     user = get_user(session, user_id)
     if not user:
         return False
