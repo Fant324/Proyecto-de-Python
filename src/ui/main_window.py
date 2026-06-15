@@ -1,4 +1,6 @@
-import sys
+"""Módulo de la ventana principal de la aplicación"""
+
+import logging
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
@@ -7,11 +9,17 @@ from PyQt6.QtWidgets import (
     QApplication,
 )
 from src.models.user import User
+from src.ui.title_bar import TitleBar
+
+logger = logging.getLogger(__name__)
 
 
 class MainWindow(QMainWindow):
+    """Ventana principal con menú lateral y panel de contenido apilado"""
     def __init__(self, user: User):
+        """Inicializa la ventana principal con el usuario autenticado"""
         super().__init__()
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.current_user = user
         self.setWindowTitle(f"Inventario - {user.username} ({user.role})")
         self.resize(950, 680)
@@ -19,59 +27,27 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("F11"), self).activated.connect(self._toggle_fullscreen)
 
     def _toggle_fullscreen(self):
+        """Alterna entre pantalla completa y modo ventana"""
         if self.isFullScreen():
             self.showNormal()
         else:
             self.showFullScreen()
 
     def _close_app(self):
+        """Cierra la aplicación completamente"""
         QApplication.quit()
 
     def _setup_ui(self):
+        """Configura la interfaz: barra de título, menú lateral y panel apilado"""
         central = QWidget()
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        header_bar = QWidget()
-        header_bar.setObjectName("headerBar")
-        header_bar.setStyleSheet(
-            "QWidget#headerBar { background-color: #2d2d2d; padding: 12px 20px; }"
-        )
-        header_layout = QHBoxLayout(header_bar)
-        header_layout.setContentsMargins(20, 8, 20, 8)
-
-        header = QLabel(f"Bienvenido, {self.current_user.username} ({self.current_user.role})")
-        header.setStyleSheet("font-size: 16px; font-weight: bold; color: #ffffff;")
-        header_layout.addWidget(header)
-        header_layout.addStretch()
-
-        fullscreen_btn = QPushButton("⛶")
-        fullscreen_btn.setToolTip("Pantalla completa (F11)")
-        fullscreen_btn.setFixedSize(32, 32)
-        fullscreen_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        fullscreen_btn.setStyleSheet(
-            "QPushButton { background-color: transparent; color: #aaaaaa; "
-            "font-size: 18px; border-radius: 4px; padding: 0px; }"
-            "QPushButton:hover { background-color: #3a3a3a; color: #ffffff; }"
-        )
-        fullscreen_btn.clicked.connect(self._toggle_fullscreen)
-        header_layout.addWidget(fullscreen_btn)
-
-        close_btn = QPushButton("✕")
-        close_btn.setToolTip("Salir")
-        close_btn.setFixedSize(32, 32)
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        close_btn.setStyleSheet(
-            "QPushButton { background-color: transparent; color: #aaaaaa; "
-            "font-size: 16px; border-radius: 4px; padding: 0px; }"
-            "QPushButton:hover { background-color: #b71c1c; color: #ffffff; }"
-        )
-        close_btn.clicked.connect(self._close_app)
-        header_layout.addWidget(close_btn)
-
-        main_layout.addWidget(header_bar)
+        title = f"Inventario - {self.current_user.username} ({self.current_user.role})"
+        self.title_bar = TitleBar(self, title, close_callback=self._close_app)
+        main_layout.addWidget(self.title_bar)
 
         content = QHBoxLayout()
         content.setContentsMargins(0, 0, 0, 0)
@@ -80,43 +56,35 @@ class MainWindow(QMainWindow):
         menu_panel = QWidget()
         menu_panel.setObjectName("menuPanel")
         menu_panel.setStyleSheet(
-            "QWidget#menuPanel { background-color: #252525; min-width: 180px; max-width: 180px; }"
+            "QWidget#menuPanel { background-color: #1a2530; min-width: 180px; max-width: 180px; }"
         )
         self.menu_layout = QVBoxLayout(menu_panel)
         self.menu_layout.setContentsMargins(8, 12, 8, 12)
         self.menu_layout.setSpacing(4)
 
         menu_title = QLabel("Menú")
-        menu_title.setStyleSheet("color: #888888; font-weight: bold; font-size: 12px; padding: 4px 8px;")
+        menu_title.setStyleSheet("color: #8a9ba8; font-weight: bold; font-size: 12px; padding: 4px 8px;")
         self.menu_layout.addWidget(menu_title)
 
         self._build_menu()
 
         content.addWidget(menu_panel)
 
-        stack_container = QWidget()
-        stack_layout = QHBoxLayout(stack_container)
-        stack_layout.setContentsMargins(0, 0, 0, 0)
-        stack_layout.addStretch()
-
         self.stack = QStackedWidget()
-        self.stack.setMaximumWidth(1100)
-        stack_layout.addWidget(self.stack)
-
-        stack_layout.addStretch()
-        content.addWidget(stack_container, 1)
+        self.stack.setMinimumWidth(500)
+        content.addWidget(self.stack, 1)
 
         main_layout.addLayout(content)
         self._show_products()
 
     def _build_menu(self):
+        """Construye los botones del menú lateral según el rol del usuario"""
         self.add_menu_btn("Productos", self._show_products)
         self.add_menu_btn("Entradas", self._show_entries)
         self.add_menu_btn("Salidas", self._show_outs)
         self.add_menu_btn("Ventas", self._show_sells)
-        self.add_menu_btn("Reportes", self._show_reports)
-
         if self.current_user.role == "admin":
+            self.add_menu_btn("Reportes", self._show_reports)
             self.add_menu_btn("Usuarios", self._show_users)
 
         self.menu_layout.addSpacing(20)
@@ -130,6 +98,7 @@ class MainWindow(QMainWindow):
         self.menu_layout.addStretch()
 
     def add_menu_btn(self, text, callback):
+        """Crea y agrega un botón con estilo al menú lateral"""
         btn = QPushButton(text)
         btn.setObjectName("menuBtn")
         btn.setMinimumHeight(42)
@@ -144,33 +113,41 @@ class MainWindow(QMainWindow):
         self.menu_layout.addWidget(btn)
 
     def _show_products(self):
+        """Muestra el widget de gestión de productos"""
         from src.ui.widgets.product_widget import ProductWidget
         self._show_widget(ProductWidget)
 
     def _show_entries(self):
+        """Muestra el widget de registro de entradas"""
         from src.ui.widgets.entry_widget import EntryWidget
         self._show_widget(EntryWidget)
 
     def _show_outs(self):
+        """Muestra el widget de registro de salidas"""
         from src.ui.widgets.out_widget import OutWidget
         self._show_widget(OutWidget)
 
     def _show_sells(self):
+        """Muestra el widget de registro de ventas"""
         from src.ui.widgets.sell_widget import SellWidget
         self._show_widget(SellWidget)
 
     def _show_reports(self):
+        """Muestra el widget de reportes (solo admin)"""
         from src.ui.widgets.report_widget import ReportWidget
         self._show_widget(ReportWidget)
 
     def _show_users(self):
+        """Muestra el widget de gestión de usuarios (solo admin)"""
         from src.ui.widgets.user_widget import UserWidget
         try:
             self._show_widget(UserWidget)
         except PermissionError as e:
+            logger.exception("Error al mostrar usuarios:")
             QMessageBox.warning(self, "Error", str(e))
 
     def _show_widget(self, widget_class):
+        """Muestra o agrega un widget en el panel apilado; reusa instancias existentes"""
         for i in range(self.stack.count()):
             if isinstance(self.stack.widget(i), widget_class):
                 self.stack.setCurrentIndex(i)
@@ -180,6 +157,7 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(widget)
 
     def _logout(self):
+        """Cierra sesión y abre la ventana de inicio de sesión"""
         from src.ui.login_window import LoginWindow
         self.close()
         self.deleteLater()
@@ -187,6 +165,7 @@ class MainWindow(QMainWindow):
         self._login_window.show()
 
     def _on_relogin(self, user):
+        """Crea una nueva ventana principal tras un inicio de sesión exitoso"""
         self._new_main = MainWindow(user)
         self._new_main.show()
         self._new_main.showFullScreen()
