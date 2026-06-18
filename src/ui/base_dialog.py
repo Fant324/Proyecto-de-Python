@@ -4,7 +4,7 @@ import logging
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
 )
 
 logger = logging.getLogger(__name__)
