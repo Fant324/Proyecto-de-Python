@@ -9,7 +9,6 @@ from PyQt6.QtWidgets import (
     QHeaderView, QGroupBox, QSizePolicy,
 )
 from src.database.session import get_session
-from src.ui.base_dialog import BaseDialog
 from src.services.sell_service import register_sell, get_sells
 
 logger = logging.getLogger(__name__)
@@ -94,25 +93,30 @@ class SellWidget(QWidget):
                 session.close()
 
 
-class SellDialog(BaseDialog):
+class SellDialog(QDialog):
     """Diálogo para crear una venta con múltiples productos, cantidades y fecha"""
 
     def __init__(self, parent=None):
         """Inicializa el diálogo con la lista de productos y el selector de fecha"""
-        super().__init__(parent, "Nueva Venta")
+        super().__init__(parent)
+        self.setWindowTitle("Nueva Venta")
         self.setFixedSize(420, 380)
         self.items = []
         self._setup_ui()
 
     def _setup_ui(self):
         """Construye el formulario del diálogo con tabla de productos y campos"""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
+
         form = QFormLayout()
         form.setSpacing(8)
         self.date_input = QDateEdit()
         self.date_input.setDate(QDate.currentDate())
         self.date_input.setCalendarPopup(True)
         form.addRow("Fecha:", self.date_input)
-        self.content_layout.addLayout(form)
+        layout.addLayout(form)
 
         item_group = QGroupBox("Agregar Producto")
         item_layout = QFormLayout()
@@ -132,7 +136,7 @@ class SellDialog(BaseDialog):
         item_layout.addRow(add_item_btn)
 
         item_group.setLayout(item_layout)
-        self.content_layout.addWidget(item_group)
+        layout.addWidget(item_group)
 
         self.items_list = QTableWidget()
         self.items_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -140,7 +144,7 @@ class SellDialog(BaseDialog):
         self.items_list.setHorizontalHeaderLabels(["Producto", "Cantidad", ""])
         self.items_list.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.items_list.setAlternatingRowColors(True)
-        self.content_layout.addWidget(self.items_list, 1)
+        layout.addWidget(self.items_list, 1)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
@@ -153,7 +157,9 @@ class SellDialog(BaseDialog):
         btn_layout.addStretch()
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        self.content_layout.addLayout(btn_layout)
+        layout.addLayout(btn_layout)
+
+        self.setLayout(layout)
 
     def _add_item(self):
         """Agrega un producto con su cantidad a la lista de items de la venta"""

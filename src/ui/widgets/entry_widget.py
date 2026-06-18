@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from src.database.session import get_session
+from src.ui.base_dialog import BaseDialog
 from src.services.entry_service import register_entry, get_entries
 from src.services.product_service import get_all_products
 
@@ -94,22 +95,17 @@ class EntryWidget(QWidget):
                 session.close()
 
 
-class EntryDialog(QDialog):
+class EntryDialog(BaseDialog):
     """Diálogo para ingresar los datos de una nueva entrada (producto, cantidad, fecha)"""
 
     def __init__(self, parent=None):
         """Inicializa el diálogo con campos para producto, cantidad y fecha"""
-        super().__init__(parent)
-        self.setWindowTitle("Nueva Entrada")
+        super().__init__(parent, "Nueva Entrada")
         self.setFixedSize(320, 220)
         self._setup_ui()
 
     def _setup_ui(self):
         """Construye el formulario del diálogo"""
-        layout = QVBoxLayout()
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(10)
-
         form = QFormLayout()
         form.setSpacing(8)
 
@@ -126,7 +122,7 @@ class EntryDialog(QDialog):
         self.date_input.setCalendarPopup(True)
         form.addRow("Fecha:", self.date_input)
 
-        layout.addLayout(form)
+        self.content_layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
@@ -139,9 +135,7 @@ class EntryDialog(QDialog):
         btn_layout.addStretch()
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        layout.addLayout(btn_layout)
-
-        self.setLayout(layout)
+        self.content_layout.addLayout(btn_layout)
 
     def get_data(self):
         """Valida y retorna los datos del formulario como diccionario"""

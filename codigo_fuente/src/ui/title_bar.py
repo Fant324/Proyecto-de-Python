@@ -11,12 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class TitleBar(QWidget):
-    """Barra de título personalizada con arrastre y botones de minimizar, maximizar y cerrar"""
+    """Barra de título personalizada con arrastre y botones de minimizar y cerrar"""
     def __init__(self, parent, title="", close_callback=None):
         super().__init__(parent)
         self.parent = parent
         self.drag_position = None
-        self.is_maximized = False
 
         self.setObjectName("titleBar")
         self.setAutoFillBackground(True)
@@ -36,7 +35,6 @@ class TitleBar(QWidget):
         layout.addStretch()
 
         self.min_btn = QPushButton("─")
-        self.max_btn = QPushButton("□")
         self.close_btn = QPushButton("✕")
 
         btn_style = (
@@ -70,10 +68,6 @@ class TitleBar(QWidget):
         self.min_btn.setStyleSheet(btn_style)
         self.min_btn.clicked.connect(self.parent.showMinimized)
 
-        self.max_btn.setFixedSize(38, 28)
-        self.max_btn.setStyleSheet(btn_style)
-        self.max_btn.clicked.connect(self._toggle_maximized)
-
         self.close_btn.setFixedSize(38, 28)
         self.close_btn.setStyleSheet(close_style)
         if close_callback:
@@ -82,22 +76,8 @@ class TitleBar(QWidget):
             self.close_btn.clicked.connect(self.parent.close)
 
         layout.addWidget(self.min_btn)
-        layout.addWidget(self.max_btn)
         layout.addWidget(self.close_btn)
         self.setLayout(layout)
-
-    def _toggle_maximized(self):
-        if self.is_maximized:
-            self.parent.showNormal()
-            self.max_btn.setText("□")
-        else:
-            self.parent.showMaximized()
-            self.max_btn.setText("❐")
-        self.is_maximized = not self.is_maximized
-
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._toggle_maximized()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

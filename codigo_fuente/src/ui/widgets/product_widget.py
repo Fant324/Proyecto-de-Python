@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 from src.database.session import get_session
-from src.ui.base_dialog import BaseDialog
 from src.services.product_service import (
     create_product, get_all_products, update_product, delete_product,
 )
@@ -162,13 +161,13 @@ class ProductWidget(QWidget):
                 session.close()
 
 
-class ProductDialog(BaseDialog):
+class ProductDialog(QDialog):
     """Diálogo para crear o editar un producto (nombre, costo, precio, stock)"""
     def __init__(self, parent=None, product=None):
         """Inicializa el diálogo; si recibe un producto, carga sus datos para edición"""
+        super().__init__(parent)
         self.product = product
-        title = "Editar Producto" if product else "Nuevo Producto"
-        super().__init__(parent, title)
+        self.setWindowTitle("Editar Producto" if product else "Nuevo Producto")
         self.setFixedSize(320, 260)
         self._setup_ui()
         if product:
@@ -178,6 +177,10 @@ class ProductDialog(BaseDialog):
             self.cant_input.setText(str(product.cant))
 
     def _setup_ui(self):
+        layout = QVBoxLayout()
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
+
         form = QFormLayout()
         form.setSpacing(8)
 
@@ -197,7 +200,7 @@ class ProductDialog(BaseDialog):
         self.cant_input.setPlaceholderText("Stock inicial (opcional)")
         form.addRow("Stock:", self.cant_input)
 
-        self.content_layout.addLayout(form)
+        layout.addLayout(form)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(8)
@@ -210,7 +213,9 @@ class ProductDialog(BaseDialog):
         btn_layout.addStretch()
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        self.content_layout.addLayout(btn_layout)
+        layout.addLayout(btn_layout)
+
+        self.setLayout(layout)
 
     def get_data(self):
         """Valida y retorna los datos del formulario como diccionario"""
