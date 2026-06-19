@@ -10,80 +10,29 @@ Aplicación de escritorio para gestión de inventario con roles (admin/vendedor)
 
 ## Instalación
 
-### 1. Clonar y entrar al proyecto
+Consulta la **[guía de instalación completa](docs/instalacion.md)** para instrucciones detalladas según tu sistema operativo:
 
-```bash
-cd Proyecto-de-Python
-```
+| Sistema | Script automatizado |
+|---------|-------------------|
+| Linux   | `./run.sh`        |
+| Windows (cmd) | `run.bat`    |
+| Windows (PowerShell) | `.\run.ps1` |
 
-### 2. Crear y activar entorno virtual
+### Resumen rápido
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3. Instalar dependencias
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configurar base de datos
-
-Crea una base de datos en PostgreSQL:
-
-```bash
-createdb stockmanager
-```
-
-Copia y edita el archivo de entorno:
-
-```bash
-cp .env.example .env
-```
-
-Edita `.env` con tus credenciales de PostgreSQL:
-
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=stockmanager
-DB_USER=postgres
-DB_PASSWORD=tu_contraseña
-```
-
-### 5. Inicializar la base de datos
-
-```bash
-PYTHONPATH=. alembic upgrade head
-PYTHONPATH=. python src/seed.py
-```
-
-Esto crea las tablas y un usuario administrador por defecto.
-
-### 6. (Opcional) Cargar datos de prueba
-
-```bash
-psql -U postgres -d stockmanager -f seed_data.sql
-```
-
-Esto inserta 15 productos de ejemplo (laptops, periféricos, etc.).
-
-## Ejecución
-
-### Opción 1: Script automatizado
-
+**Linux:**
 ```bash
 ./run.sh
 ```
 
-### Opción 2: Paso a paso
+**Windows cmd:**
+```cmd
+run.bat
+```
 
-```bash
-source venv/bin/activate
-PYTHONPATH=. python src/seed.py   # solo la primera vez
-PYTHONPATH=. python src/main.py
+**Windows PowerShell:**
+```powershell
+.\run.ps1
 ```
 
 ## Usuarios por defecto
@@ -113,7 +62,7 @@ psql -U postgres -d stockmanager -f seed_data.sql
 PYTHONPATH=. python src/main.py
 ```
 
-O simplemente usar `run.sh` que hace todo automáticamente.
+O simplemente usar `run.sh` (Linux), `run.bat` (Windows cmd) o `run.ps1` (Windows PowerShell) que hacen todo automáticamente.
 
 ## Estructura del proyecto
 

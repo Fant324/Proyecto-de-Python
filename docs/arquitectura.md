@@ -1,7 +1,7 @@
 # Arquitectura del Proyecto
 
 ## 1. Introducción
-Este proyecto implementa una aplicación de escritorio desarrollada en Python, utilizando **[PyQt6](ca://s?q=PyQt6)** para la interfaz gráfica, **[SQLAlchemy](ca://s?q=SQLAlchemy)** como ORM y **PostgreSQL** como motor de base de datos.  
+Este proyecto implementa una aplicación de escritorio desarrollada en Python, utilizando **PyQt6** para la interfaz gráfica, **SQLAlchemy** como ORM y **PostgreSQL** como motor de base de datos.  
 La arquitectura está diseñada para ser **modular, escalable y mantenible**, siguiendo buenas prácticas de separación por capas.
 
 ---
@@ -12,35 +12,34 @@ La arquitectura está diseñada para ser **modular, escalable y mantenible**, si
 Proyecto-de-Python/
 │
 ├── src/
-│   ├── app/
-│   │   ├── ui/
-│   │   ├── models/
-│   │   ├── services/
-│   │   ├── database/
-│   │   └── utils/
-│   └── main.py
+│   ├── main.py                    # Punto de entrada
+│   ├── seed.py                    # Carga de datos iniciales
+│   ├── database/                  # Conexión y sesión SQLAlchemy
+│   ├── models/                    # Modelos ORM (User, Product, Entry, Out, Sell, ProdSell)
+│   ├── services/                  # Lógica de negocio (auth, cruds, stock, reportes)
+│   └── ui/                        # Interfaces (login, main, title bar, widgets)
+│       └── widgets/               # Pantallas: productos, entradas, salidas, ventas, reportes, usuarios
 │
-├── docs/
-│   └── arquitectura.md
-│
-├── tests/
-│   └── test_app.py
-│
-├── .gitignore
-├── .env.example
+├── docs/                          # Documentación
+├── tests/                         # Pruebas unitarias (pytest)
+├── sql/                           # Scripts SQL (schema + seed)
+├── alembic/                       # Migraciones
+├── run.sh                         # Script de inicio (Linux)
+├── run.bat                        # Script de inicio (Windows cmd)
+├── run.ps1                        # Script de inicio (Windows PowerShell)
 ├── requirements.txt
-└── README.md
+└── .env.example                   # Configuración de base de datos
 ```
 ---
 
 ## 3. Descripción de Módulos
 
 ### **src/app/ui/**
-Contiene todas las interfaces gráficas creadas con **[PyQt6](ca://s?q=PyQt6)**.  
+Contiene todas las interfaces gráficas creadas con **PyQt6**.  
 Aquí se definen ventanas, diálogos, formularios y controladores de eventos.
 
 ### **src/app/models/**
-Incluye los modelos ORM definidos con **[SQLAlchemy](ca://s?q=SQLAlchemy)**.  
+Incluye los modelos ORM definidos con **SQLAlchemy**.  
 Cada archivo representa una tabla de la base de datos.
 
 ### **src/app/services/**
@@ -52,7 +51,7 @@ Incluye:
 - Configuración de conexión  
 - Creación del motor  
 - Sesiones  
-- Migraciones con **[Alembic](ca://s?q=Alembic)**  
+- Migraciones con **Alembic**  
 
 ### **src/app/utils/**
 Funciones auxiliares reutilizables: validaciones, formateos, helpers, etc.
@@ -93,12 +92,12 @@ Gestiona persistencia, sesiones y migraciones.
 
 ## 6. Tecnologías Utilizadas
 
-- **[PyQt6](ca://s?q=PyQt6)** — Interfaz gráfica  
-- **[SQLAlchemy](ca://s?q=SQLAlchemy)** — ORM  
-- **[psycopg2-binary](ca://s?q=psycopg2_binary)** — Driver PostgreSQL  
-- **[python-dotenv](ca://s?q=python_dotenv)** — Variables de entorno  
-- **[Alembic](ca://s?q=Alembic)** — Migraciones  
-- **[pytest](ca://s?q=pytest)** — Pruebas automatizadas  
+- **PyQt6** — Interfaz gráfica  
+- **SQLAlchemy** — ORM  
+- **psycopg2-binary** — Driver PostgreSQL  
+- **python-dotenv** — Variables de entorno  
+- **Alembic** — Migraciones  
+- **pytest** — Pruebas automatizadas  
 
 ---
 

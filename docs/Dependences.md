@@ -1,7 +1,3 @@
-Perfecto, Luis. Aquí tienes **el mismo README completamente en Markdown**, limpio, estructurado y listo para usar en tu repositorio.
-
----
-
 # 📘 Sistema de Gestión de Inventario — Proyecto Académico  
 Aplicación de escritorio multiplataforma (Windows/Linux) desarrollada en **Python**, utilizando **PyQt6** para la interfaz gráfica, **SQLAlchemy** como ORM y **PostgreSQL** como base de datos inicial (con futura migración a MySQL).
 
@@ -161,4 +157,14 @@ pip install alembic
 ```bash
 pip install PyQt6 SQLAlchemy psycopg2-binary python-dotenv pytest alembic
 ```
+
+## Ejecución del proyecto
+
+| Sistema | Comando |
+|---------|---------|
+| Linux   | `./run.sh` |
+| Windows cmd | `run.bat` |
+| Windows PowerShell | `.\run.ps1` |
+
+Ver [guía de instalación completa](instalacion.md) para más detalles.
 

@@ -8,7 +8,7 @@ Aplicación de escritorio en **3 capas**: Presentación (PyQt6), Servicios (lóg
 ### Tecnologías
 | Componente | Tecnología |
 |---|---|
-| Lenguaje | Python 3.12+ |
+| Lenguaje | Python 3.10+ |
 | Interfaz gráfica | PyQt6 |
 | Base de datos | PostgreSQL |
 | ORM | SQLAlchemy 2.0 |
@@ -33,7 +33,9 @@ Aplicación de escritorio en **3 capas**: Presentación (PyQt6), Servicios (lóg
 ├── docs/                    # Documentación
 ├── alembic/                 # Migraciones
 ├── requirements.txt
-├── run.sh / run.bat         # Scripts de inicio
+├── run.sh                   # Script de inicio (Linux)
+├── run.bat                  # Script de inicio (Windows cmd)
+├── run.ps1                  # Script de inicio (Windows PowerShell)
 └── .env.example             # Configuración de BD
 ```
 
@@ -42,7 +44,7 @@ Aplicación de escritorio en **3 capas**: Presentación (PyQt6), Servicios (lóg
 ## 2. Manual de Usuario
 
 ### 2.1 Requisitos previos
-- Python 3.12+
+- Python 3.10+
 - PostgreSQL con base de datos `stockmanager` creada
 - Archivo `.env` configurado (ver `.env.example`)
 
@@ -53,19 +55,25 @@ Aplicación de escritorio en **3 capas**: Presentación (PyQt6), Servicios (lóg
 ./run.sh
 ```
 
-**Windows:**
+**Windows (cmd):**
 ```batch
 run.bat
+```
+
+**Windows (PowerShell):**
+```powershell
+.\run.ps1
 ```
 
 **Manual:**
 ```bash
 python -m venv venv
-source venv/bin/activate      # Linux
-venv\Scripts\activate.bat     # Windows
+source venv/bin/activate              # Linux
+venv\Scripts\activate.bat             # Windows cmd
+.\venv\Scripts\Activate.ps1           # Windows PowerShell
 pip install -r requirements.txt
-cp .env.example .env          # Editar datos de PostgreSQL
-python src/seed.py            # Crea tablas + usuario admin/admin + datos de prueba
+cp .env.example .env                  # Editar datos de PostgreSQL
+python src/seed.py                    # Crea tablas + usuario admin/admin + datos de prueba
 python src/main.py
 ```
 

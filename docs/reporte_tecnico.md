@@ -232,7 +232,7 @@ Todos los errores están en español y son trazables:
 ## 10. Despliegue y Ejecución
 
 ### Requisitos
-- Python 3.12+
+- Python 3.10+
 - PostgreSQL
 - Paquetes en `requirements.txt`
 
@@ -241,19 +241,25 @@ Todos los errores están en español y son trazables:
 ./run.sh
 ```
 
-### Instalación (Windows)
+### Instalación (Windows cmd)
 ```batch
 run.bat
+```
+
+### Instalación (Windows PowerShell)
+```powershell
+.\run.ps1
 ```
 
 ### Manualmente
 ```bash
 python -m venv venv
-source venv/bin/activate      # Linux
-venv\Scripts\activate.bat     # Windows
+source venv/bin/activate              # Linux
+venv\Scripts\activate.bat             # Windows cmd
+.\venv\Scripts\Activate.ps1           # Windows PowerShell
 pip install -r requirements.txt
-cp .env.example .env          # Editar con datos de PostgreSQL
-python src/seed.py            # Crea usuario admin/admin
+cp .env.example .env                  # Editar con datos de PostgreSQL
+python src/seed.py                    # Crea usuario admin/admin
 python src/main.py
 ```
 
@@ -310,7 +316,8 @@ python src/main.py
 │           ├── report_widget.py, user_widget.py
 ├── tests/                         # Pruebas unitarias
 ├── run.sh                         # Script de inicio (Linux)
-├── run.bat                        # Script de inicio (Windows)
+├── run.bat                        # Script de inicio (Windows cmd)
+├── run.ps1                        # Script de inicio (Windows PowerShell)
 ├── requirements.txt
 └── .env.example                   # Plantilla de configuración
 ```
@@ -328,5 +335,12 @@ Archivos de prueba en `tests/`:
 
 Ejecución:
 ```bash
-pytest tests/ -v
+# Linux
+PYTHONPATH=. python -m pytest tests/ -v
+
+# Windows cmd
+set PYTHONPATH=%cd% && python -m pytest tests/ -v
+
+# Windows PowerShell
+$env:PYTHONPATH = Get-Location; python -m pytest tests/ -v
 ```
