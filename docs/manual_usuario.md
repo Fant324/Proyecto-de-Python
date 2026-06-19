@@ -1,5 +1,9 @@
 # Sistema de Gestión de Inventario
 
+> Contactar a
+>> Luis Alberto Perez Alvarez **#**: 52763075 **Gmail**: az2005.cu@gmail.com
+>> Maikel Alejandro Garcia Bolivar **#**: 59169490 **Gmail**: maikelalejandro309@gmail.com
+
 ## 1. Diseño y Tecnologías
 
 ### Arquitectura
