@@ -31,8 +31,8 @@ def get_user_by_username(session: Session, username: str) -> User | None:
 
 
 def get_all_users(session: Session) -> list[User]:
-    """Obtiene todos los usuarios ordenados por ID"""
-    return session.query(User).order_by(User.id).all()
+    """Obtiene todos los usuarios activos ordenados por ID"""
+    return session.query(User).filter(User.is_active == True).order_by(User.id).all()
 
 
 def update_user(session: Session, user_id: int, **kwargs) -> User | None:
@@ -61,6 +61,6 @@ def delete_user(session: Session, user_id: int, current_user: User) -> bool:
         admin_count = session.query(User).filter(User.role == "admin").count()
         if admin_count <= 1:
             raise ValueError("No se puede eliminar al único administrador")
-    session.delete(user)
+    user.is_active = False
     session.commit()
     return True

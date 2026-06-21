@@ -18,13 +18,15 @@ def session():
         echo=False,
     )
     Base.metadata.create_all(bind=engine)
-    TestSession = sessionmaker(bind=engine)
-    s = TestSession()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
     try:
-        yield s
+        yield session
     finally:
-        s.rollback()
-        s.close()
+        session.close()
+        transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture

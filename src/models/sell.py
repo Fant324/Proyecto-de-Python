@@ -1,7 +1,8 @@
 """Modelo de venta - tabla 'sell' para registrar ventas realizadas"""
 
 import logging
-from sqlalchemy import Column, Integer, Numeric, Date
+from sqlalchemy import Column, Integer, Numeric, Date, DateTime
+from sqlalchemy.sql import func
 from src.database.base import Base
 
 logger = logging.getLogger(__name__)
@@ -15,3 +16,5 @@ class Sell(Base):
     cant = Column(Integer, nullable=False)
     revenue = Column(Numeric(10, 2), nullable=False)
     date = Column(Date, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())

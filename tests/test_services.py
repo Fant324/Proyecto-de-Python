@@ -58,28 +58,33 @@ class TestUserService:
         admin = create_user(session, "del_test_admin", "pass", "admin")
         result = delete_user(session, user.id, admin)
         assert result is True
-        assert get_user(session, user.id) is None
+        deleted = get_user(session, user.id)
+        assert deleted is not None
+        assert deleted.is_active is False
 
-    def test_delete_last_admin_raises(self, session):
+    def test_delete_last_admin_raises(self, session, admin_user):
         admin_count_before = session.query(User).filter(User.role == "admin").count()
-        admin = create_user(session, "sole_admin_test", "pass", "admin")
         if admin_count_before == 0:
+            admin = create_user(session, "sole_admin_test", "pass", "admin")
             with pytest.raises(ValueError, match="único administrador"):
                 delete_user(session, admin.id, admin)
         else:
-            delete_user(session, admin.id, admin)
-            assert get_user(session, admin.id) is None
+            admin_to_delete = create_user(session, "sole_admin_test", "pass", "admin")
+            delete_user(session, admin_to_delete.id, admin_user)
+            deleted = get_user(session, admin_to_delete.id)
+            assert deleted is not None
+            assert deleted.is_active is False
 
 
 class TestProductService:
     def test_create_product(self, session):
         product = create_product(session, "Monitor", Decimal("150"), Decimal("300"), 20)
-        assert product.idProd is not None
+        assert product.id_prod is not None
         assert product.name == "Monitor"
         assert product.cant == 20
 
     def test_get_product(self, session, sample_product):
-        found = get_product(session, sample_product.idProd)
+        found = get_product(session, sample_product.id_prod)
         assert found is not None
         assert found.name == "Test Producto"
 
@@ -88,15 +93,17 @@ class TestProductService:
         assert len(products) >= 1
 
     def test_delete_product(self, session, sample_product):
-        result = delete_product(session, sample_product.idProd)
+        result = delete_product(session, sample_product.id_prod)
         assert result is True
-        assert get_product(session, sample_product.idProd) is None
+        deleted = get_product(session, sample_product.id_prod)
+        assert deleted is not None
+        assert deleted.is_active is False
 
 
 class TestEntryService:
     def test_register_entry_increases_stock(self, session, sample_product):
         initial = sample_product.cant
-        entry = register_entry(session, sample_product.idProd, 50)
+        entry = register_entry(session, sample_product.id_prod, 50)
         assert entry.idEntry is not None
         assert entry.cant == 50
         session.flush()
@@ -105,7 +112,7 @@ class TestEntryService:
 
     def test_get_entries_by_date(self, session, sample_product):
         today = date.today()
-        register_entry(session, sample_product.idProd, 10, today)
+        register_entry(session, sample_product.id_prod, 10, today)
         entries = get_entries_by_date_range(session, today, today)
         assert len(entries) >= 1
 
@@ -113,7 +120,7 @@ class TestEntryService:
 class TestOutService:
     def test_register_out_decreases_stock(self, session, sample_product):
         initial = sample_product.cant
-        out = register_out(session, sample_product.idProd, 30, "Destino Test")
+        out = register_out(session, sample_product.id_prod, 30, "Destino Test")
         assert out.idOut is not None
         session.flush()
         session.refresh(sample_product)
@@ -121,24 +128,24 @@ class TestOutService:
 
     def test_register_out_insufficient_stock(self, session, sample_product):
         with pytest.raises(ValueError, match="Stock insuficiente"):
-            register_out(session, sample_product.idProd, 9999, "Test")
+            register_out(session, sample_product.id_prod, 9999, "Test")
 
     def test_get_outs_by_date(self, session, sample_product):
         today = date.today()
-        register_out(session, sample_product.idProd, 5, "Destino", today)
+        register_out(session, sample_product.id_prod, 5, "Destino", today)
         outs = get_outs_by_date_range(session, today, today)
         assert len(outs) >= 1
 
 
 class TestSellService:
     def test_register_sell_calculates_revenue(self, session, sample_product):
-        sell = register_sell(session, [{"product_id": sample_product.idProd, "quantity": 4}])
+        sell = register_sell(session, [{"product_id": sample_product.id_prod, "quantity": 4}])
         assert sell.cant == 4
         assert sell.revenue == Decimal("100.00")
 
     def test_register_sell_decreases_stock(self, session, sample_product):
         initial = sample_product.cant
-        register_sell(session, [{"product_id": sample_product.idProd, "quantity": 5}])
+        register_sell(session, [{"product_id": sample_product.id_prod, "quantity": 5}])
         session.flush()
         session.refresh(sample_product)
         assert sample_product.cant == initial - 5
@@ -147,19 +154,19 @@ class TestSellService:
         p1 = create_product(session, "Prod A", Decimal("10"), Decimal("20"), 50)
         p2 = create_product(session, "Prod B", Decimal("15"), Decimal("30"), 50)
         sell = register_sell(session, [
-            {"product_id": p1.idProd, "quantity": 3},
-            {"product_id": p2.idProd, "quantity": 2},
+            {"product_id": p1.id_prod, "quantity": 3},
+            {"product_id": p2.id_prod, "quantity": 2},
         ])
         assert sell.cant == 5
         assert sell.revenue == Decimal("120.00")
 
     def test_register_sell_insufficient_stock(self, session, sample_product):
         with pytest.raises(ValueError, match="Stock insuficiente"):
-            register_sell(session, [{"product_id": sample_product.idProd, "quantity": 9999}])
+            register_sell(session, [{"product_id": sample_product.id_prod, "quantity": 9999}])
 
     def test_get_sells_by_date(self, session, sample_product):
         today = date.today()
-        register_sell(session, [{"product_id": sample_product.idProd, "quantity": 1}])
+        register_sell(session, [{"product_id": sample_product.id_prod, "quantity": 1}])
         sells = get_sells_by_date_range(session, today, today)
         assert len(sells) >= 1
 
@@ -167,18 +174,18 @@ class TestSellService:
 class TestReportService:
     def test_get_entries_report(self, session, sample_product):
         today = date.today()
-        register_entry(session, sample_product.idProd, 25, today)
+        register_entry(session, sample_product.id_prod, 25, today)
         entries = get_entries(session, today, today)
         assert len(entries) >= 1
 
     def test_get_outs_report(self, session, sample_product):
         today = date.today()
-        register_out(session, sample_product.idProd, 8, "Reporte Test", today)
+        register_out(session, sample_product.id_prod, 8, "Reporte Test", today)
         outs = get_outs(session, today, today)
         assert len(outs) >= 1
 
     def test_get_sells_report(self, session, sample_product):
         today = date.today()
-        register_sell(session, [{"product_id": sample_product.idProd, "quantity": 2}])
+        register_sell(session, [{"product_id": sample_product.id_prod, "quantity": 2}])
         sells = get_sells(session, today, today)
         assert len(sells) >= 1

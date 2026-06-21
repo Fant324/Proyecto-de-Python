@@ -38,7 +38,7 @@ class TestProductModel:
         product = Product(name="Laptop", cant=10, cost=Decimal("500"), price=Decimal("800"))
         session.add(product)
         session.flush()
-        assert product.idProd is not None
+        assert product.id_prod is not None
         assert product.name == "Laptop"
         assert product.cant == 10
         assert product.cost == Decimal("500")
@@ -54,7 +54,7 @@ class TestProductModel:
 class TestEntryModel:
     def test_create_entry(self, session, sample_product):
         from datetime import date
-        entry = Entry(idProd=sample_product.idProd, cant=50, date=date.today())
+        entry = Entry(id_prod=sample_product.id_prod, cant=50, date=date.today())
         session.add(entry)
         session.flush()
         assert entry.idEntry is not None
@@ -64,7 +64,7 @@ class TestEntryModel:
 class TestOutModel:
     def test_create_out(self, session, sample_product):
         from datetime import date
-        out = Out(idProd=sample_product.idProd, cant=10, destination="Cliente A", date=date.today())
+        out = Out(id_prod=sample_product.id_prod, cant=10, destination="Cliente A", date=date.today())
         session.add(out)
         session.flush()
         assert out.idOut is not None
@@ -87,8 +87,8 @@ class TestProdSellModel:
         sell = Sell(cant=3, revenue=Decimal("75.00"), date=date.today())
         session.add(sell)
         session.flush()
-        ps = ProdSell(idProd=sample_product.idProd, idSell=sell.idSell, cant=3)
+        ps = ProdSell(id_prod=sample_product.id_prod, idSell=sell.idSell, cant=3)
         session.add(ps)
         session.flush()
-        assert ps.idProd == sample_product.idProd
+        assert ps.id_prod == sample_product.id_prod
         assert ps.idSell == sell.idSell

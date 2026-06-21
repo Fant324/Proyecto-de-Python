@@ -1,7 +1,8 @@
 """Modelo de entrada - tabla 'entry' para registrar ingresos de productos al inventario"""
 
 import logging
-from sqlalchemy import Column, Integer, ForeignKey, Date
+from sqlalchemy import Column, Integer, ForeignKey, Date, DateTime
+from sqlalchemy.sql import func
 from src.database.base import Base
 
 logger = logging.getLogger(__name__)
@@ -15,3 +16,5 @@ class Entry(Base):
     id_prod = Column(Integer, ForeignKey("product.id_prod"), nullable=False)
     cant = Column(Integer, nullable=False)
     date = Column(Date, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,7 +1,9 @@
 """Modelo de producto - tabla 'product' para el catálogo de productos del inventario"""
 
 import logging
-from sqlalchemy import Column, Integer, String, Numeric
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, Boolean
+from sqlalchemy.sql import func
 from src.database.base import Base
 
 logger = logging.getLogger(__name__)
@@ -16,3 +18,6 @@ class Product(Base):
     cant = Column(Integer, nullable=False, default=0)
     cost = Column(Numeric(10, 2), nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, default=True, nullable=False)

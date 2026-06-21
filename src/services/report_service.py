@@ -10,6 +10,9 @@ from src.services.out_service import get_outs_by_date_range
 from src.models.sell import Sell
 from src.models.product import Product
 from src.models.prod_sell import ProdSell
+from src.models.v_stock_profit import VStockProfit
+from src.models.v_sales_summary import VSalesSummary
+from src.models.v_stock_movements import VStockMovement
 
 logger = logging.getLogger(__name__)
 
@@ -49,19 +52,26 @@ def get_sales_by_product(session: Session, start_date: date, end_date: date):
 
 
 def get_stock_profit(session: Session):
-    """Calcula la ganancia esperada por producto (precio - costo) * stock, solo productos con stock > 0"""
-    return session.query(
-        Product.id_prod,
-        Product.name,
-        Product.cant.label("stock"),
-        Product.price,
-        Product.cost,
-        ((Product.price - Product.cost) * Product.cant).label("expected_profit"),
-    ).filter(
-        Product.cant > 0,
+    """Calcula la ganancia esperada por producto usando la vista v_stock_profit, solo productos con stock > 0"""
+    return session.query(VStockProfit).filter(
+        VStockProfit.stock > 0,
     ).order_by(
-        ((Product.price - Product.cost) * Product.cant).desc(),
+        VStockProfit.expected_profit.desc(),
     ).all()
+
+
+def get_total_sales_by_product(session: Session):
+    """Obtiene el resumen total de ventas por producto usando la vista v_sales_summary"""
+    return session.query(VSalesSummary).order_by(
+        VSalesSummary.total_units_sold.desc(),
+    ).all()
+
+
+def get_stock_movements(session: Session, start_date: date, end_date: date):
+    """Obtiene movimientos de stock unificados (entradas y salidas) usando la vista v_stock_movements"""
+    return session.query(VStockMovement).filter(
+        VStockMovement.date.between(start_date, end_date),
+    ).order_by(VStockMovement.date.desc()).all()
 
 
 def get_summary(session: Session, start_date: date, end_date: date):

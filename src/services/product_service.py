@@ -28,8 +28,8 @@ def get_product(session: Session, product_id: int) -> Product | None:
 
 
 def get_all_products(session: Session) -> list[Product]:
-    """Obtiene todos los productos ordenados por ID"""
-    return session.query(Product).order_by(Product.id_prod).all()
+    """Obtiene todos los productos activos ordenados por ID"""
+    return session.query(Product).filter(Product.is_active == True).order_by(Product.id_prod).all()
 
 
 def update_product(session: Session, product_id: int, **kwargs) -> Product | None:
@@ -45,10 +45,10 @@ def update_product(session: Session, product_id: int, **kwargs) -> Product | Non
 
 
 def delete_product(session: Session, product_id: int) -> bool:
-    """Elimina un producto por ID; retorna False si no existe, True si se eliminó correctamente"""
+    """Marca un producto como inactivo (soft delete); retorna False si no existe, True si se desactivó correctamente"""
     product = get_product(session, product_id)
     if not product:
         return False
-    session.delete(product)
+    product.is_active = False
     session.commit()
     return True
