@@ -22,7 +22,7 @@ def main():
     """Inicia la aplicación: crea tablas/vistas/triggers, configura la ventana de login y ejecuta el bucle de eventos de Qt"""
     logger.info("Iniciando Sistema de Gestión de Inventario")
     Base.metadata.create_all(bind=engine)
-    seed_database(skip_seed_if_admin=True)
+    seed_database()
     logger.info("Base de datos lista")
 
     app = QApplication(sys.argv)

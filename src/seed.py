@@ -25,15 +25,15 @@ def _execute_sql_file(filename: str) -> None:
         conn.execute(text(sql))
 
 
-def seed_database(skip_seed_if_admin: bool = False):
-    """Crea tablas, vistas, triggers y carga datos de prueba"""
-    # Ejecutar scripts de esquema en orden
+def seed_database(force_seed: bool = False):
+    """Crea tablas, vistas, triggers y carga datos de prueba.
+    Si force_seed=True salta la verificación del admin y siempre ejecuta seed.sql.
+    """
     for sql_file in SQL_FILES:
         _execute_sql_file(sql_file)
         logger.info(f"Ejecutado: {sql_file}")
 
-    if skip_seed_if_admin:
-        # Verificar si ya existe el admin
+    if not force_seed:
         session = get_session()
         try:
             admin = session.query(User).filter(User.username == "admin").first()
@@ -43,7 +43,6 @@ def seed_database(skip_seed_if_admin: bool = False):
         finally:
             session.close()
 
-    # Cargar datos de prueba
     _execute_sql_file("seed.sql")
     logger.info("Datos de prueba cargados: usuario admin/admin + 15 productos + movimientos")
 
