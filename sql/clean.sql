@@ -9,24 +9,11 @@ BEGIN;
 -- Desactivar triggers temporalmente para evitar ejecución de funciones
 SET session_replication_role = replica;
 
--- Eliminar datos (orden respetando FK: hijos primero, padres después)
-TRUNCATE TABLE prod_sell CASCADE;
-TRUNCATE TABLE product_audit CASCADE;
-TRUNCATE TABLE sell CASCADE;
-TRUNCATE TABLE out CASCADE;
-TRUNCATE TABLE entry CASCADE;
-TRUNCATE TABLE product CASCADE;
-TRUNCATE TABLE users CASCADE;
+-- Eliminar datos y reiniciar secuencias automáticamente (RESTART IDENTITY)
+TRUNCATE TABLE prod_sell, product_audit, sell, out, entry, product, users
+RESTART IDENTITY CASCADE;
 
 -- Reactivar triggers
 SET session_replication_role = origin;
-
--- Reiniciar secuencias
-ALTER SEQUENCE IF EXISTS product_audit_id_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS sell_idSell_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS out_idOut_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS entry_idEntry_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS product_id_prod_seq RESTART WITH 1;
-ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1;
 
 COMMIT;
