@@ -54,10 +54,10 @@ Contiene la lógica de negocio. Los servicios actúan como intermediarios entre 
 - `auth_service` — autenticación y verificación de roles
 - `user_service` — CRUD de usuarios
 - `product_service` — CRUD de productos
-- `stock_service` — control de stock con bloqueo pesimista
-- `entry_service` — registro de entradas
-- `out_service` — registro de salidas
-- `sell_service` — ventas multiproducto
+- `stock_service` — consulta de stock
+- `entry_service` — entradas (lock pesimista directo en producto)
+- `out_service` — salidas (valida stock, descuenta directo con lock)
+- `sell_service` — ventas multiproducto (lock por producto en una transacción)
 - `report_service` — reportes y analítica
 
 ### **src/database/**
@@ -68,7 +68,7 @@ Contiene la lógica de negocio. Los servicios actúan como intermediarios entre 
 ### **sql/**
 Scripts SQL organizados por responsabilidad:
 - `tables.sql` — definición de tablas, tipos ENUM e índices
-- `views.sql` — vistas materializadas para consultas frecuentes
+- `views.sql` — vistas del sistema (solo lectura, no materializadas)
 - `triggers.sql` — funciones y disparadores (updated_at automático, auditoría de precios, validación precio>=costo)
 - `clean.sql` — truncado seguro de todas las tablas con reinicio de secuencias
 - `seed.sql` — datos de prueba (admin, 15 productos, movimientos y ventas)
@@ -92,6 +92,7 @@ El menú lateral se adapta según el rol del usuario:
 
 ### Capa de Servicios
 Procesa reglas, validaciones y operaciones complejas. Cada servicio llama a `require_role()` para control de acceso.
+Las operaciones de stock usan bloqueo pesimista (`SELECT ... FOR UPDATE`) directamente sobre el producto, evitando condiciones de carrera.
 
 ### Capa de Modelos
 Define entidades, relaciones ORM y modelos de vista (solo lectura).
@@ -137,7 +138,8 @@ Gestiona persistencia, sesiones, migraciones y ejecución de scripts SQL.
 - **Migraciones con Alembic** para mantener la base de datos versionada.
 - **Triggers en PostgreSQL** para reglas de integridad a nivel BD (updated_at automático, validación precio>=costo, auditoría de cambios de precio).
 - **Roles** definidos como ENUM de PostgreSQL y reflejados en SQLAlchemy.
-- **Menú dinámico** que muestra/oculta opciones según el rol del usuario autenticado.
+- **Menú dinámico** que muestra/oculta opciones según el rol del usuario autenticado (`admin`, `almacen`, `vendedor`).
+- **Seed idempotente**: al iniciar la app se crean vistas/triggers automáticamente, y los datos de prueba solo se siembran si no existe el usuario admin.
 
 ---
 
@@ -147,7 +149,8 @@ Gestiona persistencia, sesiones, migraciones y ejecución de scripts SQL.
 1. Crear archivo en `src/models/`.
 2. Agregar la tabla o vista en el SQL correspondiente (`tables.sql` o `views.sql`).
 3. Registrar en `src/models/__init__.py`.
-4. Crear migración Alembic.
+4. Si se agrega a `tables.sql`, actualizar los modelos de SQLAlchemy y crear migración Alembic.
+5. Si se agrega a `views.sql`, crear modelo con `__table__` y `__mapper_args__` con `primary_key` adecuado.
 
 ### Añadir una nueva ventana
 1. Crear widget en `src/ui/widgets/`.

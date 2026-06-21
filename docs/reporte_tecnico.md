@@ -39,11 +39,12 @@ El proyecto sigue una arquitectura en **3 capas**:
 
 ### Flujo de ejecución
 
-1. `src/main.py` carga el tema oscuro (`styles_dark.qss`) y muestra `LoginWindow`.
-2. El usuario se autentica vía `auth_service.authenticate_user()`.
-3. Tras login exitoso, se crea `MainWindow` con un menú lateral dinámico según el rol.
-4. Cada widget interactúa con su servicio correspondiente, que valida datos, verifica permisos con `require_role()`, aplica reglas de negocio y persiste vía SQLAlchemy.
-5. Triggers de PostgreSQL ejecutan reglas de integridad adicionales automáticamente.
+1. `src/main.py` crea tablas vía `Base.metadata.create_all()`, luego llama a `seed.seed_database()` para ejecutar `tables.sql`, `views.sql`, `triggers.sql` y datos de prueba si no existe admin.
+2. Se carga el tema oscuro y se muestra `LoginWindow`.
+3. El usuario se autentica vía `auth_service.authenticate_user()`.
+4. Tras login exitoso, se crea `MainWindow` con un menú lateral dinámico según el rol.
+5. Cada widget obtiene una sesión, llama al servicio correspondiente, que valida datos, verifica permisos con `require_role()`, aplica reglas de negocio, adquiere bloqueo pesimista si escribe y persiste vía SQLAlchemy.
+6. Triggers de PostgreSQL ejecutan reglas de integridad adicionales automáticamente.
 
 ---
 
@@ -111,15 +112,15 @@ El proyecto sigue una arquitectura en **3 capas**:
 | `out` | Registro de salidas (traslados, uso interno) |
 | `sell` | Cabecera de venta (total unidades e ingreso) |
 | `prod_sell` | Detalle de productos por venta (relación N:M) |
-| `product_audit` | Auditoría de cambios de precio |
+| `product_audit` | Auditoría de cambios de precio (old_price, new_price, changed_at) |
 
 ### Vistas del sistema
 
-| Vista | Propósito |
-|-------|-----------|
-| `v_stock_profit` | Ganancia esperada por producto = (precio - costo) × stock |
-| `v_sales_summary` | Total unidades vendidas e ingreso por producto |
-| `v_stock_movements` | Movimientos unificados de entrada y salida |
+| Vista | Propósito | PK del mapper SQLAlchemy |
+|-------|-----------|--------------------------|
+| `v_stock_profit` | Ganancia esperada = (precio - costo) × stock (solo activos) | `id_prod` |
+| `v_sales_summary` | Total unidades vendidas e ingreso por producto | `id_prod` |
+| `v_stock_movements` | Movimientos unificados de entrada y salida | `id_prod` (no único, suficiente para lectura) |
 
 ---
 
@@ -132,8 +133,8 @@ El proyecto sigue una arquitectura en **3 capas**:
 | `trg_out_updated_at` | BEFORE UPDATE ON out | Actualiza `updated_at` automáticamente |
 | `trg_sell_updated_at` | BEFORE UPDATE ON sell | Actualiza `updated_at` automáticamente |
 | `trg_users_updated_at` | BEFORE UPDATE ON users | Actualiza `updated_at` automáticamente |
-| `trg_audit_price_changes` | AFTER UPDATE ON product | Registra cambios de precio en `product_audit` |
-| `trg_product_price_check` | BEFORE INSERT OR UPDATE ON product | Valida que precio >= costo |
+| `trg_audit_price_changes` | AFTER UPDATE OF price ON product | Registra precio anterior y nuevo en `product_audit` |
+| `trg_product_price_check` | BEFORE INSERT OR UPDATE ON product | Valida que NEW.price >= NEW.cost (lanza EXCEPTION si no cumple) |
 
 ---
 
@@ -155,23 +156,25 @@ El proyecto sigue una arquitectura en **3 capas**:
 - Validaciones: nombre no vacío, costo/precio positivos.
 - Soft delete: marca `is_active = False` en lugar de eliminar.
 
-### 5.4 `stock_service.py` — Control de stock (concurrencia)
-- Usa `SELECT ... FOR UPDATE` (bloqueo pesimista) para operaciones atómicas.
-- `add_stock()` y `remove_stock()` modifican el stock de forma segura.
+### 5.4 `stock_service.py` — Consulta de stock
+- `get_stock()`: consulta el stock actual de un producto (solo lectura, sin bloqueo).
 
 ### 5.5 `entry_service.py` — Registro de entradas
 - Valida producto_id > 0 y cantidad > 0.
-- Crea registro `Entry` e incrementa stock vía `stock_service.add_stock()`.
+- Obtiene el producto con `SELECT ... FOR UPDATE` y verifica que exista.
+- Crea registro `Entry` e incrementa `product.cant` directamente en una transacción.
 
 ### 5.6 `out_service.py` — Registro de salidas
 - Valida producto, cantidad, destino no vacío y stock suficiente.
-- Crea registro `Out` y decrementa stock vía `stock_service.remove_stock()`.
+- Obtiene el producto con `SELECT ... FOR UPDATE`, verifica stock y descuenta `product.cant` directamente.
 
 ### 5.7 `sell_service.py` — Registro de ventas
 - Acepta lista de productos con cantidades.
+- Obtiene cada producto con `SELECT ... FOR UPDATE` en una sola transacción.
 - Valida existencia y stock suficiente para cada producto.
 - Calcula ingreso total (`precio × cantidad`).
-- Crea `Sell` y asociaciones `ProdSell`, decrementa stock de cada producto.
+- Crea `Sell` y asociaciones `ProdSell`, descuenta `product.cant` de cada producto.
+- Evita doble bloqueo al operar directamente sobre el producto en lugar de llamar a `stock_service`.
 
 ### 5.8 `report_service.py` — Reportes y analítica
 - Consultas agregadas con `SUM`, `JOIN` y `GROUP BY`.
@@ -190,6 +193,8 @@ El proyecto sigue una arquitectura en **3 capas**:
 | admin | CRUD | ✓ | ✓ | ✓ | ✓ | ✓ |
 | almacen | CRUD | ✓ | ✓ | ✗ | ✗ | ✗ |
 | vendedor | Solo lectura | ✗ | ✗ | ✓ | ✗ | ✗ |
+
+Los tres roles se definen en un ENUM `user_roles` de PostgreSQL y se reflejan en el modelo `User` de SQLAlchemy.
 
 Los permisos se aplican en dos capas:
 1. **UI**: el menú lateral solo muestra botones según el rol.
@@ -267,10 +272,11 @@ DB_PASSWORD=...
 
 - Contraseñas hasheadas con **bcrypt** (salt aleatorio).
 - Roles de usuario con verificación en UI y widgets.
-- Protección de stock con bloqueo pesimista (`SELECT ... FOR UPDATE`).
+- Protección de stock con bloqueo pesimista (`SELECT ... FOR UPDATE`) en cada servicio de escritura, evitando doble bloqueo.
 - Validación de datos en servidor (servicios) y cliente (diálogos UI).
 - Validación precio >= costo a nivel de base de datos (trigger).
-- Soft delete en productos y usuarios.
+- Soft delete en productos y usuarios (`is_active = FALSE`).
+- Creación idempotente de esquema: `main.py` ejecuta `seed.seed_database()` que verifica si el admin existe antes de poblar datos.
 
 ---
 
@@ -297,9 +303,13 @@ venv\Scripts\activate.bat                # Windows cmd
 .\venv\Scripts\Activate.ps1              # Windows PowerShell
 pip install -r requirements.txt
 cp .env.example .env                     # Editar con datos de PostgreSQL
-python src/seed.py                       # Crea tablas, usuario admin/admin y datos de prueba
-python src/main.py
+python src/main.py                       # Crea tablas, vistas, triggers, admin y datos de prueba
 ```
+
+> `main.py` llama a `seed.seed_database()` que:
+> 1. Ejecuta `tables.sql`, `views.sql`, `triggers.sql` (siempre, son idempotentes)
+> 2. Si no existe el admin, ejecuta `seed.sql` con datos de prueba
+> 3. Si el admin ya existe, omite `seed.sql` para no truncar datos
 
 ### Usuario por defecto
 | Usuario | Contraseña | Rol |
@@ -329,7 +339,7 @@ Framework: **pytest** sobre base de datos PostgreSQL real.
 Archivos de prueba en `tests/`:
 - `test_models.py` — Pruebas de creación y consulta de modelos.
 - `test_services.py` — Pruebas de servicios (auth, productos, entradas, salidas, ventas, reportes).
-- `conftest.py` — Fixtures con PostgreSQL y rollback automático por prueba.
+- `conftest.py` — Fixtures con PostgreSQL: crea tablas, vistas y triggers desde los archivos SQL (scope session). Cada test usa una transacción independiente con rollback automático.
 
 Ejecución:
 ```bash

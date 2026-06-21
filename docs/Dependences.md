@@ -171,4 +171,7 @@ pip install PyQt6 SQLAlchemy psycopg2-binary python-dotenv bcrypt pytest alembic
 | Iniciar app | `./run.sh` | `run.bat` | `.\run.ps1` |
 | Limpiar BD | `./clean.sh` | `clean.bat` | `.\clean.ps1` |
 
+> Nota: Al iniciar la app se crean automáticamente tablas, vistas y triggers.
+> Los datos de prueba se siembran solo si no existe el usuario admin.
+
 Ver [guía de instalación completa](instalacion.md) para más detalles.

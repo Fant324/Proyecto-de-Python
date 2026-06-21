@@ -79,9 +79,11 @@ venv\Scripts\activate.bat             # Windows cmd
 .\venv\Scripts\Activate.ps1           # Windows PowerShell
 pip install -r requirements.txt
 cp .env.example .env                  # Editar datos de PostgreSQL
-python src/seed.py                    # Crea tablas + usuario admin/admin + datos de prueba
-python src/main.py
+python src/main.py                    # Crea tablas, vistas, triggers y datos de prueba
 ```
+
+> La primera vez crea tablas, vistas, triggers, usuario admin y datos de prueba automáticamente.
+> En ejecuciones posteriores omite los datos de prueba si el admin ya existe.
 
 **Limpiar la base de datos:**
 ```bash

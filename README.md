@@ -41,7 +41,7 @@ run.bat
 |---------|-----------|------|
 | admin   | admin     | Admin|
 
-Puedes crear más usuarios desde el panel de administración.
+Puedes crear más usuarios (admin, almacen, vendedor) desde el panel de administración.
 
 ## Roles y permisos
 
@@ -58,14 +58,12 @@ Puedes crear más usuarios desde el panel de administración.
 dropdb stockmanager
 createdb stockmanager
 
-# 2. Sembrar esquema y datos de prueba
-PYTHONPATH=. python src/seed.py
-
-# 3. Iniciar la aplicación
+# 2. Iniciar (crea esquema + datos de prueba si no existe admin)
 PYTHONPATH=. python src/main.py
 ```
 
 O simplemente usar los scripts automatizados (`run.sh`, `run.bat`, `run.ps1`) que hacen todo automáticamente.
+Si el admin ya existe, `seed.sql` se omite para no truncar los datos existentes.
 
 ## Limpiar datos sin borrar la base de datos
 
@@ -77,7 +75,7 @@ Para eliminar todos los registros y reiniciar secuencias (sin borrar las tablas)
 | Windows (cmd) | `clean.bat` |
 | Windows (PowerShell) | `.\clean.ps1` |
 
-Luego puedes volver a sembrar los datos con `PYTHONPATH=. python src/seed.py`.
+Luego al iniciar la app se repoblarán los datos automáticamente (las vistas y triggers se crean al arrancar desde `main.py`).
 
 ## Estructura del proyecto
 
@@ -109,10 +107,10 @@ src/
 │   ├── auth_service.py            # Autenticación con bcrypt
 │   ├── user_service.py            # CRUD de usuarios
 │   ├── product_service.py         # CRUD de productos
-│   ├── stock_service.py           # Control de stock
-│   ├── entry_service.py           # Registro de entradas
-│   ├── out_service.py             # Registro de salidas
-│   ├── sell_service.py            # Ventas multiproducto
+│   ├── stock_service.py           # Consulta de stock
+│   ├── entry_service.py           # Entradas (lock pesimista en producto)
+│   ├── out_service.py             # Salidas (valida stock, lock directo)
+│   ├── sell_service.py            # Ventas multiproducto (lock por producto)
 │   └── report_service.py          # Reportes por fecha
 ├── ui/
 │   ├── login_window.py            # Ventana de inicio de sesión
