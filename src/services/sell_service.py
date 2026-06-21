@@ -4,10 +4,9 @@ import logging
 from datetime import date
 from decimal import Decimal
 from sqlalchemy.orm import Session
+from src.models.product import Product
 from src.models.sell import Sell
 from src.models.prod_sell import ProdSell
-from src.services.stock_service import get_stock, remove_stock
-from src.services.product_service import get_product
 
 logger = logging.getLogger(__name__)
 
@@ -23,23 +22,23 @@ def register_sell(
     total_units = 0
     total_revenue = Decimal("0.00")
 
+    products_locked = []
     for item in items:
         product_id = item["product_id"]
         quantity = item["quantity"]
 
-        product = get_product(session, product_id)
+        product = session.query(Product).filter_by(id_prod=product_id).with_for_update().first()
         if not product:
             raise ValueError(f"Producto ID {product_id} no existe")
-
-        current_stock = get_stock(session, product_id)
-        if current_stock is None or current_stock < quantity:
+        if product.cant < quantity:
             raise ValueError(
                 f"Stock insuficiente para '{product.name}': "
-                f"disponible {current_stock}, requerido {quantity}"
+                f"disponible {product.cant}, requerido {quantity}"
             )
 
         total_units += quantity
         total_revenue += product.price * quantity
+        products_locked.append((product, quantity))
 
     sell = Sell(
         cant=total_units,
@@ -49,17 +48,14 @@ def register_sell(
     session.add(sell)
     session.flush()
 
-    for item in items:
-        product_id = item["product_id"]
-        quantity = item["quantity"]
-
+    for product, quantity in products_locked:
         prod_sell = ProdSell(
-            id_prod=product_id,
+            id_prod=product.id_prod,
             idSell=sell.idSell,
             cant=quantity,
         )
         session.add(prod_sell)
-        remove_stock(session, product_id, quantity)
+        product.cant -= quantity
 
     session.commit()
     return sell

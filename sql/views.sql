@@ -6,7 +6,8 @@
 CREATE OR REPLACE VIEW v_stock_profit AS
 SELECT id_prod, name, cant AS stock, cost, price,
        (price - cost) * cant AS expected_profit
-FROM product;
+FROM product
+WHERE is_active = TRUE;
 
 CREATE OR REPLACE VIEW v_sales_summary AS
 SELECT p.id_prod, p.name,

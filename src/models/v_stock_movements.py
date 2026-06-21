@@ -18,7 +18,7 @@ view_table = Table(
 @view_registry.mapped
 class VStockMovement:
     __table__ = view_table
-    __mapper_args__ = {"primary_key": [view_table.c.id_prod, view_table.c.date, view_table.c.type]}
+    __mapper_args__ = {"primary_key": [view_table.c.id_prod]}
 
     def __repr__(self):
         return f"<VStockMovement(id_prod={self.id_prod}, type='{self.type}')>"

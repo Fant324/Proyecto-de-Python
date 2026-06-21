@@ -3,8 +3,8 @@
 import logging
 from datetime import date
 from sqlalchemy.orm import Session
+from src.models.product import Product
 from src.models.out import Out
-from src.services.stock_service import remove_stock, get_stock
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +17,12 @@ def register_out(session: Session, product_id: int, quantity: int, destination: 
         raise ValueError("Cantidad: debe ser mayor a cero")
     if not destination:
         raise ValueError("Destino: no puede estar vacío")
-    current_stock = get_stock(session, product_id)
-    if current_stock is None:
+
+    product = session.query(Product).filter_by(id_prod=product_id).with_for_update().first()
+    if not product:
         raise ValueError("El producto no existe")
-    if current_stock < quantity:
-        raise ValueError(f"Stock insuficiente: disponible {current_stock}, requerido {quantity}")
+    if product.cant < quantity:
+        raise ValueError(f"Stock insuficiente: disponible {product.cant}, requerido {quantity}")
 
     out = Out(
         id_prod=product_id,
@@ -30,7 +31,7 @@ def register_out(session: Session, product_id: int, quantity: int, destination: 
         date=out_date or date.today(),
     )
     session.add(out)
-    remove_stock(session, product_id, quantity)
+    product.cant -= quantity
     session.commit()
     return out
 

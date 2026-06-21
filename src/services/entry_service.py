@@ -3,8 +3,8 @@
 import logging
 from datetime import date
 from sqlalchemy.orm import Session
+from src.models.product import Product
 from src.models.entry import Entry
-from src.services.stock_service import add_stock, get_stock
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +15,18 @@ def register_entry(session: Session, product_id: int, quantity: int, entry_date:
         raise ValueError("ID Producto: inválido")
     if quantity <= 0:
         raise ValueError("Cantidad: debe ser mayor a cero")
+
+    product = session.query(Product).filter_by(id_prod=product_id).with_for_update().first()
+    if not product:
+        raise ValueError(f"El producto ID {product_id} no existe")
+
     entry = Entry(
         id_prod=product_id,
         cant=quantity,
         date=entry_date or date.today(),
     )
     session.add(entry)
-    add_stock(session, product_id, quantity)
+    product.cant += quantity
     session.commit()
     return entry
 

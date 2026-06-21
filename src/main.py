@@ -7,6 +7,7 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
 from src.database.session import engine
 from src.database.base import Base
+from src.seed import seed_database
 from src.ui.login_window import LoginWindow
 from src.ui.main_window import MainWindow
 
@@ -18,9 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    """Inicia la aplicación: crea tablas, configura la ventana de login y ejecuta el bucle de eventos de Qt"""
+    """Inicia la aplicación: crea tablas/vistas/triggers, configura la ventana de login y ejecuta el bucle de eventos de Qt"""
     logger.info("Iniciando Sistema de Gestión de Inventario")
     Base.metadata.create_all(bind=engine)
+    seed_database(skip_seed_if_admin=True)
     logger.info("Base de datos lista")
 
     app = QApplication(sys.argv)

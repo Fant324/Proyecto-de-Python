@@ -25,22 +25,23 @@ def _execute_sql_file(filename: str) -> None:
         conn.execute(text(sql))
 
 
-def seed_database():
+def seed_database(skip_seed_if_admin: bool = False):
     """Crea tablas, vistas, triggers y carga datos de prueba"""
     # Ejecutar scripts de esquema en orden
     for sql_file in SQL_FILES:
         _execute_sql_file(sql_file)
         logger.info(f"Ejecutado: {sql_file}")
 
-    # Verificar si ya existe el admin
-    session = get_session()
-    try:
-        admin = session.query(User).filter(User.username == "admin").first()
-        if admin:
-            logger.info(f"El usuario admin ya existe (id={admin.id}), se omite seed")
-            return
-    finally:
-        session.close()
+    if skip_seed_if_admin:
+        # Verificar si ya existe el admin
+        session = get_session()
+        try:
+            admin = session.query(User).filter(User.username == "admin").first()
+            if admin:
+                logger.info(f"El usuario admin ya existe (id={admin.id}), se omite seed")
+                return
+        finally:
+            session.close()
 
     # Cargar datos de prueba
     _execute_sql_file("seed.sql")

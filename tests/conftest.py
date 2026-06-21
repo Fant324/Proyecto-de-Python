@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from decimal import Decimal
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
@@ -10,15 +11,32 @@ from src.models.out import Out
 from src.models.sell import Sell
 from src.models.prod_sell import ProdSell
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+SQL_DIR = BASE_DIR / "sql"
 
-@pytest.fixture
-def session():
+SQL_FILES = ["tables.sql", "views.sql", "triggers.sql"]
+
+
+@pytest.fixture(scope="session")
+def db_engine():
     engine = create_engine(
         "postgresql://postgres:sldptseesc@localhost:5432/stockmanager",
         echo=False,
     )
     Base.metadata.create_all(bind=engine)
-    connection = engine.connect()
+    for sql_file in SQL_FILES:
+        filepath = SQL_DIR / sql_file
+        if filepath.exists():
+            with open(filepath, encoding="utf-8") as f:
+                with engine.begin() as conn:
+                    conn.execute(text(f.read()))
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def session(db_engine):
+    connection = db_engine.connect()
     transaction = connection.begin()
     session = Session(bind=connection, join_transaction_mode="create_savepoint")
     try:
