@@ -2,7 +2,7 @@
 
 ## 1. Resumen del Proyecto
 
-Aplicación de escritorio para la gestión de inventario, productos, entradas, salidas y ventas. Desarrollada en Python con PyQt6 para la interfaz gráfica y PostgreSQL como motor de base de datos. Permite control de stock, generación de reportes por rango de fechas, conversión de moneda (USD ↔ CUP) y autenticación de usuarios con dos roles: `admin` y `vendedor`.
+Aplicación de escritorio para la gestión de inventario, productos, entradas, salidas y ventas. Desarrollada en Python con PyQt6 para la interfaz gráfica y PostgreSQL como motor de base de datos. Permite control de stock, generación de reportes por rango de fechas, conversión de moneda (USD ↔ CUP), autenticación de usuarios con tres roles (`admin`, `almacen`, `vendedor`) y reglas de integridad a nivel de base de datos mediante triggers.
 
 ---
 
@@ -11,32 +11,39 @@ Aplicación de escritorio para la gestión de inventario, productos, entradas, s
 El proyecto sigue una arquitectura en **3 capas**:
 
 ```
-┌──────────────────────────────────────────────┐
-│              CAPA DE PRESENTACIÓN             │
-│          (src/ui/ — PyQt6 Widgets)            │
-│   LoginWindow · MainWindow · TitleBar         │
-│   ProductWidget · EntryWidget · OutWidget     │
-│   SellWidget · ReportWidget · UserWidget      │
-├──────────────────────────────────────────────┤
-│               CAPA DE SERVICIOS               │
-│          (src/services/ — Lógica de negocio)  │
-│   auth_service · user_service · product_service│
-│   entry_service · out_service · sell_service   │
-│   stock_service · report_service               │
-├──────────────────────────────────────────────┤
-│             CAPA DE ACCESO A DATOS             │
-│   (src/models/ + src/database/ — SQLAlchemy)  │
-│   User · Product · Entry · Out · Sell         │
-│   ProdSell · session.py · base.py             │
-└──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│           CAPA DE PRESENTACIÓN                    │
+│       (src/ui/ — PyQt6 Widgets)                   │
+│   LoginWindow · MainWindow · TitleBar             │
+│   ProductWidget · EntryWidget · OutWidget         │
+│   SellWidget · ReportWidget · UserWidget          │
+├──────────────────────────────────────────────────┤
+│            CAPA DE SERVICIOS                      │
+│       (src/services/ — Lógica de negocio)         │
+│   auth_service · user_service · product_service   │
+│   entry_service · out_service · sell_service      │
+│   stock_service · report_service                  │
+├──────────────────────────────────────────────────┤
+│          CAPA DE ACCESO A DATOS                   │
+│    (src/models/ + src/database/ — SQLAlchemy)     │
+│   User · Product · Entry · Out · Sell             │
+│   ProdSell · ProductAudit · Vistas (solo lectura) │
+│   session.py · base.py                            │
+├──────────────────────────────────────────────────┤
+│          CAPA DE BASE DE DATOS                    │
+│    (sql/ — PostgreSQL con triggers)               │
+│   tables.sql · views.sql · triggers.sql           │
+│   clean.sql · seed.sql                            │
+└──────────────────────────────────────────────────┘
 ```
 
 ### Flujo de ejecución
 
-1. `src/main.py` crea las tablas en BD, carga el tema oscuro (`styles_dark.qss`), y muestra `LoginWindow`.
+1. `src/main.py` carga el tema oscuro (`styles_dark.qss`) y muestra `LoginWindow`.
 2. El usuario se autentica vía `auth_service.authenticate_user()`.
-3. Tras login exitoso, se crea `MainWindow` con un menú lateral y un `QStackedWidget` que alterna entre los widgets de cada módulo.
-4. Cada widget interactúa con su servicio correspondiente, que valida datos, aplica reglas de negocio y persiste vía SQLAlchemy.
+3. Tras login exitoso, se crea `MainWindow` con un menú lateral dinámico según el rol.
+4. Cada widget interactúa con su servicio correspondiente, que valida datos, verifica permisos con `require_role()`, aplica reglas de negocio y persiste vía SQLAlchemy.
+5. Triggers de PostgreSQL ejecutan reglas de integridad adicionales automáticamente.
 
 ---
 
@@ -50,8 +57,11 @@ El proyecto sigue una arquitectura en **3 capas**:
 │ username │       │ (PK)      │       │ (PK)     │
 │ password │       │ name      │       │ cant     │
 │ role     │       │ cant      │       │ revenue  │
-└──────────┘       │ cost      │       │ date     │
-                   │ price     │       └────┬─────┘
+│ is_active│       │ cost      │       │ date     │
+│ created  │       │ price     │       └────┬─────┘
+│ updated  │       │ is_active │            │
+└──────────┘       │ created   │            │
+                   │ updated   │            │
                    └─────┬─────┘            │
                          │                  │
               ┌──────────┴──────────┐       │
@@ -64,7 +74,9 @@ El proyecto sigue una arquitectura en **3 capas**:
         │ (FK)      │        │ (FK)      │  │
         │ cant      │        │ cant      │  │
         │ date      │        │ dest.     │  │
-        └───────────┘        │ date      │  │
+        │ created   │        │ date      │  │
+        │ updated   │        │ created   │  │
+        └───────────┘        │ updated   │  │
                              └───────────┘  │
                                     │       │
                                     └───┐   │
@@ -76,122 +88,153 @@ El proyecto sigue una arquitectura en **3 capas**:
                                   │ cant           │
                                   └────────────────┘
 ```
+                                                  
+```
+┌───────────────────┐
+│  product_audit    │
+├───────────────────┤
+│ id (PK)           │
+│ product_id        │
+│ old_price         │
+│ new_price         │
+│ changed_at        │
+└───────────────────┘
+```
 
 ### Descripción de tablas
 
 | Tabla | Propósito |
 |-------|-----------|
-| `users` | Autenticación y roles (admin/vendedor) |
+| `users` | Autenticación y roles (admin/almacen/vendedor) |
 | `product` | Catálogo de productos con stock, costo y precio |
 | `entry` | Registro de entradas (compras/reabastecimiento) |
 | `out` | Registro de salidas (traslados, uso interno) |
 | `sell` | Cabecera de venta (total unidades e ingreso) |
 | `prod_sell` | Detalle de productos por venta (relación N:M) |
+| `product_audit` | Auditoría de cambios de precio |
+
+### Vistas del sistema
+
+| Vista | Propósito |
+|-------|-----------|
+| `v_stock_profit` | Ganancia esperada por producto = (precio - costo) × stock |
+| `v_sales_summary` | Total unidades vendidas e ingreso por producto |
+| `v_stock_movements` | Movimientos unificados de entrada y salida |
 
 ---
 
-## 4. Capa de Servicios (Lógica de Negocio)
+## 4. Reglas de Integridad (Triggers)
 
-### 4.1 `auth_service.py` — Autenticación
+| Trigger | Evento | Función |
+|---------|--------|---------|
+| `trg_product_updated_at` | BEFORE UPDATE ON product | Actualiza `updated_at` automáticamente |
+| `trg_entry_updated_at` | BEFORE UPDATE ON entry | Actualiza `updated_at` automáticamente |
+| `trg_out_updated_at` | BEFORE UPDATE ON out | Actualiza `updated_at` automáticamente |
+| `trg_sell_updated_at` | BEFORE UPDATE ON sell | Actualiza `updated_at` automáticamente |
+| `trg_users_updated_at` | BEFORE UPDATE ON users | Actualiza `updated_at` automáticamente |
+| `trg_audit_price_changes` | AFTER UPDATE ON product | Registra cambios de precio en `product_audit` |
+| `trg_product_price_check` | BEFORE INSERT OR UPDATE ON product | Valida que precio >= costo |
+
+---
+
+## 5. Capa de Servicios (Lógica de Negocio)
+
+### 5.1 `auth_service.py` — Autenticación
 - `hash_password()` → genera hash bcrypt con salt aleatorio.
 - `check_password()` → verifica contraseña contra hash.
 - `authenticate_user()` → busca usuario por username y valida password. Retorna `User` o `None`.
+- `verify_role()` → compara rol del usuario con uno requerido.
+- `require_role()` → lanza `PermissionError` si el usuario no tiene uno de los roles permitidos.
 - `require_admin()` → lanza `PermissionError` si el usuario no es admin.
 
-### 4.2 `user_service.py` — CRUD de usuarios
+### 5.2 `user_service.py` — CRUD de usuarios
 - Validaciones: username y password no vacíos.
-- `delete_user()` impide eliminar al último administrador.
+- `delete_user()` verifica permisos de admin e impide eliminar al último administrador.
 
-### 4.3 `product_service.py` — CRUD de productos
+### 5.3 `product_service.py` — CRUD de productos
 - Validaciones: nombre no vacío, costo/precio positivos.
+- Soft delete: marca `is_active = False` en lugar de eliminar.
 
-### 4.4 `stock_service.py` — Control de stock (concurrencia)
+### 5.4 `stock_service.py` — Control de stock (concurrencia)
 - Usa `SELECT ... FOR UPDATE` (bloqueo pesimista) para operaciones atómicas.
 - `add_stock()` y `remove_stock()` modifican el stock de forma segura.
 
-### 4.5 `entry_service.py` — Registro de entradas
+### 5.5 `entry_service.py` — Registro de entradas
 - Valida producto_id > 0 y cantidad > 0.
 - Crea registro `Entry` e incrementa stock vía `stock_service.add_stock()`.
 
-### 4.6 `out_service.py` — Registro de salidas
+### 5.6 `out_service.py` — Registro de salidas
 - Valida producto, cantidad, destino no vacío y stock suficiente.
 - Crea registro `Out` y decrementa stock vía `stock_service.remove_stock()`.
 
-### 4.7 `sell_service.py` — Registro de ventas
+### 5.7 `sell_service.py` — Registro de ventas
 - Acepta lista de productos con cantidades.
 - Valida existencia y stock suficiente para cada producto.
 - Calcula ingreso total (`precio × cantidad`).
 - Crea `Sell` y asociaciones `ProdSell`, decrementa stock de cada producto.
 
-### 4.8 `report_service.py` — Reportes y analítica
+### 5.8 `report_service.py` — Reportes y analítica
 - Consultas agregadas con `SUM`, `JOIN` y `GROUP BY`.
 - `get_sales_by_product()`: total vendido por producto en un rango de fechas.
-- `get_stock_profit()`: ganancia esperada = `(precio - costo) × stock` por producto.
+- `get_stock_profit()`: ganancia esperada usando la vista `v_stock_profit`.
+- `get_total_sales_by_product()`: resumen total de ventas usando `v_sales_summary`.
+- `get_stock_movements()`: movimientos unificados usando `v_stock_movements`.
 - `get_summary()`: ingreso total, costo total y ganancia total del período.
 
 ---
 
-## 5. Capa de Presentación (Interfaz de Usuario)
+## 6. Roles y Permisos
 
-### 5.1 `TitleBar` — Barra de título personalizada
+| Rol | Productos | Entradas | Salidas | Ventas | Reportes | Usuarios |
+|-----|-----------|----------|---------|--------|----------|----------|
+| admin | CRUD | ✓ | ✓ | ✓ | ✓ | ✓ |
+| almacen | CRUD | ✓ | ✓ | ✗ | ✗ | ✗ |
+| vendedor | Solo lectura | ✗ | ✗ | ✓ | ✗ | ✗ |
+
+Los permisos se aplican en dos capas:
+1. **UI**: el menú lateral solo muestra botones según el rol.
+2. **Widgets**: cada widget verifica permisos en su constructor mediante `require_role()`.
+
+---
+
+## 7. Capa de Presentación (Interfaz de Usuario)
+
+### 7.1 `TitleBar` — Barra de título personalizada
 - Reemplaza la decoración nativa de ventana (`FramelessWindowHint`).
 - Botones: minimizar (`─`), maximizar/restaurar (`☐`/`❐`), cerrar (`✕`).
 - Arrastre de ventana mediante eventos de ratón.
 - Doble clic para maximizar/restaurar.
 
-### 5.2 `LoginWindow` — Inicio de sesión
+### 7.2 `LoginWindow` — Inicio de sesión
 - Ventana frameless centrada en la pantalla.
 - Campos: usuario, contraseña. Botón "Iniciar Sesión".
 - Errores: credenciales incorrectas, campos vacíos.
 
-### 5.3 `MainWindow` — Ventana principal
-- Menú lateral (180px) con botones de navegación.
-- Botones visibles según rol: `admin` ve Reportes y Usuarios; `vendedor` no.
+### 7.3 `MainWindow` — Ventana principal
+- Menú lateral (180px) con botones de navegación según rol.
 - `QStackedWidget` central que alterna entre widgets sin recrearlos.
 - Atajo F11 para pantalla completa.
 
-### 5.4 Widgets de gestión
+### 7.4 Widgets de gestión
 
-| Widget | Función | Diálogo |
-|--------|---------|---------|
-| `ProductWidget` | CRUD de productos con tabla y botones Editar/Eliminar | `ProductDialog` (nombre, costo, precio, stock) |
-| `EntryWidget` | Registro de entradas de inventario | `EntryDialog` (ID producto, cantidad, fecha) |
-| `OutWidget` | Registro de salidas de inventario | `OutDialog` (ID producto, cantidad, destino, fecha) |
-| `SellWidget` | Registro de ventas multi-producto | `SellDialog` (selector de productos, cantidades, fecha) |
-| `ReportWidget` | Reportes por rango de fechas (6 tabs) + exportación CSV + conversión CUP | — |
-| `UserWidget` | CRUD de usuarios (solo admin) | `UserDialog` (usuario, contraseña, rol) |
+| Widget | Función | Roles | Diálogo |
+|--------|---------|-------|---------|
+| `ProductWidget` | CRUD de productos (admin/almacen), solo lectura (vendedor) | Todos | `ProductDialog` |
+| `EntryWidget` | Registro de entradas | admin, almacen | `EntryDialog` |
+| `OutWidget` | Registro de salidas | admin, almacen | `OutDialog` |
+| `SellWidget` | Registro de ventas multi-producto | admin, vendedor | `SellDialog` |
+| `ReportWidget` | Reportes por rango de fechas (6 tabs) + exportación CSV + conversión CUP | admin | — |
+| `UserWidget` | CRUD de usuarios | admin | `UserDialog` |
 
-### 5.5 `ReportWidget` — Reportes
+### 7.5 `ReportWidget` — Reportes
 - 6 pestañas en `QTabWidget`: Entradas, Salidas, Ventas, Ventas por Producto, Productos, Resumen.
 - Filtro por rango de fechas con `QDateEdit`.
 - Checkbox "Convertir a CUP" + spinbox de tasa de cambio (persistida en `conversion_config.json`).
 - Botón "Exportar CSV" que guarda la pestaña activa en formato CSV.
-- Columnas con `QHeaderView.Stretch` para ocupar todo el ancho.
 
 ---
 
-## 6. Temas y Estilos (QSS)
-
-### 6.1 `styles_dark.qss` (tema activo)
-Paleta azul/verde oscuro cargada desde `src/main.py`:
-
-| Elemento | Color |
-|----------|-------|
-| Fondo ventana | `#121820` |
-| Paneles/tablas | `#1a2530` |
-| Encabezados/TitleBar | `#0d3b4f` |
-| Botón primario | `#1f6d49` (verde) |
-| Botón secundario | `#2a6d8f` (azul) |
-| Texto principal | `#e0e5ec` |
-| Bordes | `#2c3e4e` |
-| Selección | `#2a5f6b` |
-
-### 6.2 `styles.qss` (tema alternativo)
-Tema oscuro genérico con tonos grises (`#1e1e1e`, `#2d2d2d`, `#3a3a3a`).
-
----
-
-## 7. Base de Datos y Conexión
+## 8. Base de Datos y Conexión
 
 - **Motor:** PostgreSQL vía `psycopg2-binary`.
 - **ORM:** SQLAlchemy 2.0 con `DeclarativeBase`.
@@ -205,27 +248,29 @@ DB_USER=postgres
 DB_PASSWORD=...
 ```
 
-- **Migraciones:** Alembic (1 migración inicial que crea todas las tablas).
+- **Migraciones:** Alembic (2 migraciones: esquema inicial + reglas de integridad).
 - **String de conexión:** `postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DB_NAME}`
 
----
+### Scripts SQL
 
-## 8. Manejo de Errores
-
-Todos los errores están en español y son trazables:
-
-- **Errores de validación** (`ValueError`): mensajes claros desde la capa de servicios (ej: "Stock insuficiente: disponible X, requerido Y").
-- **Errores de permisos** (`PermissionError`): "Se requieren permisos de administrador".
-- **Errores inesperados**: capturados con `except Exception`, mostrados al usuario con contexto ("Error inesperado: ...") y registrados con `logger.exception()` para trazabilidad completa.
+| Archivo | Propósito |
+|---------|-----------|
+| `sql/tables.sql` | Creación de tablas, ENUMs e índices |
+| `sql/views.sql` | Creación de vistas del sistema |
+| `sql/triggers.sql` | Funciones y triggers de integridad |
+| `sql/seed.sql` | Datos de prueba (admin, 15 productos, movimientos) |
+| `sql/clean.sql` | Limpieza completa de datos con reinicio de secuencias |
 
 ---
 
 ## 9. Seguridad
 
 - Contraseñas hasheadas con **bcrypt** (salt aleatorio).
-- Roles de usuario: `admin` (acceso completo) y `vendedor` (sin reportes ni gestión de usuarios).
-- Protección de stock con bloqueo pesimista (`SELECT ... FOR UPDATE`) para evitar condiciones de carrera.
+- Roles de usuario con verificación en UI y widgets.
+- Protección de stock con bloqueo pesimista (`SELECT ... FOR UPDATE`).
 - Validación de datos en servidor (servicios) y cliente (diálogos UI).
+- Validación precio >= costo a nivel de base de datos (trigger).
+- Soft delete en productos y usuarios.
 
 ---
 
@@ -236,37 +281,30 @@ Todos los errores están en español y son trazables:
 - PostgreSQL
 - Paquetes en `requirements.txt`
 
-### Instalación (Linux)
-```bash
-./run.sh
-```
+### Instalación
 
-### Instalación (Windows cmd)
-```batch
-run.bat
-```
-
-### Instalación (Windows PowerShell)
-```powershell
-.\run.ps1
-```
+| Sistema | Iniciar app | Limpiar BD |
+|---------|------------|------------|
+| Linux | `./run.sh` | `./clean.sh` |
+| Windows cmd | `run.bat` | `clean.bat` |
+| Windows PowerShell | `.\run.ps1` | `.\clean.ps1` |
 
 ### Manualmente
 ```bash
 python -m venv venv
-source venv/bin/activate              # Linux
-venv\Scripts\activate.bat             # Windows cmd
-.\venv\Scripts\Activate.ps1           # Windows PowerShell
+source venv/bin/activate                 # Linux
+venv\Scripts\activate.bat                # Windows cmd
+.\venv\Scripts\Activate.ps1              # Windows PowerShell
 pip install -r requirements.txt
-cp .env.example .env                  # Editar con datos de PostgreSQL
-python src/seed.py                    # Crea usuario admin/admin
+cp .env.example .env                     # Editar con datos de PostgreSQL
+python src/seed.py                       # Crea tablas, usuario admin/admin y datos de prueba
 python src/main.py
 ```
 
 ### Usuario por defecto
-- **Usuario:** `admin`
-- **Contraseña:** `admin`
-- **Rol:** admin
+| Usuario | Contraseña | Rol |
+|---------|-----------|-----|
+| admin   | admin     | admin |
 
 ---
 
@@ -284,54 +322,14 @@ python src/main.py
 
 ---
 
-## 12. Estructura del Proyecto
+## 12. Pruebas
 
-```
-├── doc/                           # Documentación
-│   └── reporte_tecnico.md
-├── docs/                          # Documentación previa
-├── src/                           # Código fuente
-│   ├── main.py                    # Punto de entrada
-│   ├── seed.py                    # Carga de datos iniciales
-│   ├── conversion_config.json     # Tasa de cambio persistida
-│   ├── database/
-│   │   ├── base.py                # Base declarativa de SQLAlchemy
-│   │   └── session.py             # Fábrica de sesiones
-│   ├── models/                    # Modelos ORM
-│   │   ├── user.py, product.py
-│   │   ├── entry.py, out.py, sell.py, prod_sell.py
-│   ├── services/                  # Lógica de negocio
-│   │   ├── auth_service.py, user_service.py
-│   │   ├── product_service.py, stock_service.py
-│   │   ├── entry_service.py, out_service.py
-│   │   ├── sell_service.py, report_service.py
-│   └── ui/                        # Interfaz de usuario
-│       ├── login_window.py
-│       ├── main_window.py
-│       ├── title_bar.py
-│       ├── styles.qss, styles_dark.qss
-│       └── widgets/
-│           ├── product_widget.py, entry_widget.py
-│           ├── out_widget.py, sell_widget.py
-│           ├── report_widget.py, user_widget.py
-├── tests/                         # Pruebas unitarias
-├── run.sh                         # Script de inicio (Linux)
-├── run.bat                        # Script de inicio (Windows cmd)
-├── run.ps1                        # Script de inicio (Windows PowerShell)
-├── requirements.txt
-└── .env.example                   # Plantilla de configuración
-```
-
----
-
-## 13. Pruebas
-
-Framework: **pytest**.
+Framework: **pytest** sobre base de datos PostgreSQL real.
 
 Archivos de prueba en `tests/`:
 - `test_models.py` — Pruebas de creación y consulta de modelos.
 - `test_services.py` — Pruebas de servicios (auth, productos, entradas, salidas, ventas, reportes).
-- `conftest.py` — Fixtures de base de datos en memoria (SQLite) para pruebas.
+- `conftest.py` — Fixtures con PostgreSQL y rollback automático por prueba.
 
 Ejecución:
 ```bash

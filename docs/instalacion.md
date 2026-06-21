@@ -68,6 +68,12 @@ python src\seed.py
 python src\main.py
 ```
 
+### 6. Limpiar la base de datos
+
+```cmd
+clean.bat
+```
+
 ---
 
 ## Windows - PowerShell
@@ -93,7 +99,7 @@ python src\main.py
 
 ### 3. Habilitar ejecucion de scripts de PowerShell (si es necesario)
 
-Si es la primera vez que ejecutas scripts.ps1, abre PowerShell como Administrador y ejecuta:
+Si es la primera vez que ejecutas scripts .ps1, abre PowerShell como Administrador y ejecuta:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
@@ -122,6 +128,12 @@ Copy-Item .env.example .env
 $env:PYTHONPATH = Get-Location
 python src/seed.py
 python src/main.py
+```
+
+### 7. Limpiar la base de datos
+
+```powershell
+.\clean.ps1
 ```
 
 ---
@@ -173,6 +185,12 @@ PYTHONPATH=. python src/seed.py
 PYTHONPATH=. python src/main.py
 ```
 
+### 7. Limpiar la base de datos
+
+```bash
+./clean.sh
+```
+
 ---
 
 ## Linux - Fedora / RHEL
@@ -220,6 +238,12 @@ cp .env.example .env
 # Edita .env con tus datos de PostgreSQL
 PYTHONPATH=. python src/seed.py
 PYTHONPATH=. python src/main.py
+```
+
+### 7. Limpiar la base de datos
+
+```bash
+./clean.sh
 ```
 
 ---
@@ -271,6 +295,12 @@ PYTHONPATH=. python src/seed.py
 PYTHONPATH=. python src/main.py
 ```
 
+### 7. Limpiar la base de datos
+
+```bash
+./clean.sh
+```
+
 ---
 
 ## Linux - openSUSE
@@ -317,6 +347,12 @@ cp .env.example .env
 # Edita .env con tus datos de PostgreSQL
 PYTHONPATH=. python src/seed.py
 PYTHONPATH=. python src/main.py
+```
+
+### 7. Limpiar la base de datos
+
+```bash
+./clean.sh
 ```
 
 ---

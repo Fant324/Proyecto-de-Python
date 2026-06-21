@@ -1,6 +1,6 @@
 # Sistema de Gestión de Inventario
 
-Aplicación de escritorio para gestión de inventario con roles (admin/vendedor), built con PyQt6 + SQLAlchemy + PostgreSQL.
+Aplicación de escritorio para gestión de inventario con roles (admin/almacen/vendedor), construida con PyQt6 + SQLAlchemy + PostgreSQL.
 
 ## Requisitos
 
@@ -117,6 +117,8 @@ src/
 ├── ui/
 │   ├── login_window.py            # Ventana de inicio de sesión
 │   ├── main_window.py             # Ventana principal con menú
+│   ├── title_bar.py               # Barra de título personalizada
+│   ├── base_dialog.py             # Diálogo base con padding
 │   └── widgets/
 │       ├── product_widget.py      # Gestión de productos
 │       ├── entry_widget.py        # Entradas

@@ -23,24 +23,26 @@ Aplicación de escritorio en **3 capas**: Presentación (PyQt6), Servicios (lóg
 
 ### Estructura del proyecto
 ```
-├── src/
-│   ├── main.py              # Punto de entrada
-│   ├── seed.py              # Carga datos iniciales (ejecuta sql/schema.sql + sql/seed.sql)
-│   ├── database/            # Conexión y sesión SQLAlchemy
-│   ├── models/              # Modelos ORM (User, Product, Entry, Out, Sell, ProdSell)
-│   ├── services/            # Lógica de negocio (auth, cruds, stock, reportes)
-│   └── ui/                  # Interfaces (login, main, title bar, widgets)
-│       └── widgets/         # Pantallas: productos, entradas, salidas, ventas, reportes, usuarios
 ├── sql/
-│   ├── schema.sql           # CREATE TABLE de todas las tablas
-│   └── seed.sql             # Datos de prueba (admin + 15 productos + movimientos)
-├── docs/                    # Documentación
-├── alembic/                 # Migraciones
+│   ├── tables.sql              # Creación de tablas, enums e índices
+│   ├── views.sql               # Vistas del sistema
+│   ├── triggers.sql            # Funciones y disparadores (integridad)
+│   ├── clean.sql               # Limpieza de datos
+│   └── seed.sql                # Datos de prueba
+├── src/
+│   ├── main.py                 # Punto de entrada
+│   ├── seed.py                 # Ejecuta SQL en orden + datos de prueba
+│   ├── database/               # Conexión y sesión SQLAlchemy
+│   ├── models/                 # Modelos ORM (User, Product, Entry, Out, Sell, ProdSell, ProductAudit, vistas)
+│   ├── services/               # Lógica de negocio (auth, cruds, stock, reportes)
+│   └── ui/                     # Interfaces (login, main, title bar, widgets)
+│       └── widgets/            # Pantallas: productos, entradas, salidas, ventas, reportes, usuarios
+├── docs/                       # Documentación
+├── alembic/                    # Migraciones
+├── clean.sh / clean.bat / clean.ps1  # Scripts de limpieza de BD
+├── run.sh / run.bat / run.ps1  # Scripts de inicio
 ├── requirements.txt
-├── run.sh                   # Script de inicio (Linux)
-├── run.bat                  # Script de inicio (Windows cmd)
-├── run.ps1                  # Script de inicio (Windows PowerShell)
-└── .env.example             # Configuración de BD
+└── .env.example                # Configuración de BD
 ```
 
 ---
@@ -81,11 +83,11 @@ python src/seed.py                    # Crea tablas + usuario admin/admin + dato
 python src/main.py
 ```
 
-**Alternativa con psql (sin seed.py):**
+**Limpiar la base de datos:**
 ```bash
-psql -U postgres -d stockmanager -f sql/schema.sql
-psql -U postgres -d stockmanager -f sql/seed.sql
-python src/main.py
+./clean.sh                            # Linux
+clean.bat                             # Windows cmd
+.\clean.ps1                           # Windows PowerShell
 ```
 
 ### 2.3 Inicio de sesión
@@ -94,15 +96,15 @@ python src/main.py
 - Rol: administrador (acceso completo)
 
 ### 2.4 Pantalla principal
-Menú lateral izquierdo con las siguientes opciones (según el rol):
+Menú lateral izquierdo con opciones según el rol del usuario:
 
 | Botón | Descripción |
 |---|---|
-| Productos | CRUD de productos del catálogo |
-| Entradas | Registrar ingresos de stock |
-| Salidas | Registrar egresos de stock |
-| Ventas | Registrar ventas (uno o varios productos) |
-| Reportes | Reportes por rango de fechas + exportación CSV |
+| Productos | CRUD de productos (admin/almacen). Solo lectura para vendedor |
+| Entradas | Registrar ingresos de stock (admin/almacen) |
+| Salidas | Registrar egresos de stock (admin/almacen) |
+| Ventas | Registrar ventas (admin/vendedor) |
+| Reportes | Reportes por rango de fechas + exportación CSV (solo admin) |
 | Usuarios | Gestión de usuarios del sistema (solo admin) |
 
 ### 2.5 Pruebas sugeridas
@@ -148,7 +150,7 @@ Menú lateral izquierdo con las siguientes opciones (según el rol):
 1. Ir a **Usuarios** → **Nuevo Usuario**.
 2. Crear usuario `vendedor1` con rol `vendedor`.
 3. Cerrar sesión e iniciar como `vendedor1` (contraseña configurada).
-4. Verificar que los botones Reportes y Usuarios no aparecen.
+4. Verificar que solo aparecen los botones Productos (solo lectura) y Ventas.
 
 #### g) Funcionalidades adicionales
 - **F11** para alternar pantalla completa.
@@ -161,10 +163,13 @@ Menú lateral izquierdo con las siguientes opciones (según el rol):
 | Rol | Acceso |
 |---|---|
 | admin | Todas las funciones: productos, entradas, salidas, ventas, reportes, usuarios |
-| vendedor | Solo productos, entradas, salidas, ventas (sin reportes ni usuarios) |
+| almacen | Gestión de inventario: productos, entradas y salidas |
+| vendedor | Ventas y consulta de stock de productos (solo lectura) |
 
 ### 2.7 Notas importantes
 - La aplicación usa **PostgreSQL** como base de datos. Asegúrese de tener el servidor corriendo.
 - Los errores se muestran en español con mensajes descriptivos.
 - La tasa de conversión se guarda automáticamente al cambiar el valor.
 - No se puede eliminar el último usuario administrador ni eliminarse a sí mismo.
+- El precio de un producto no puede ser menor que su costo (validado a nivel de base de datos).
+- Los cambios de precio se registran automáticamente en la tabla de auditoría.
