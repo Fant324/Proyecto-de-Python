@@ -75,15 +75,19 @@ class MainWindow(QMainWindow):
         content.addWidget(self.stack, 1)
 
         main_layout.addLayout(content)
-        self._show_products()
+        self._show_default_widget()
 
     def _build_menu(self):
         """Construye los botones del menú lateral según el rol del usuario"""
-        self.add_menu_btn("Productos", self._show_products)
-        self.add_menu_btn("Entradas", self._show_entries)
-        self.add_menu_btn("Salidas", self._show_outs)
-        self.add_menu_btn("Ventas", self._show_sells)
-        if self.current_user.role == "admin":
+        role = self.current_user.role
+        if role in ("admin", "almacen", "vendedor"):
+            self.add_menu_btn("Productos", self._show_products)
+        if role in ("admin", "almacen"):
+            self.add_menu_btn("Entradas", self._show_entries)
+            self.add_menu_btn("Salidas", self._show_outs)
+        if role in ("admin", "vendedor"):
+            self.add_menu_btn("Ventas", self._show_sells)
+        if role == "admin":
             self.add_menu_btn("Reportes", self._show_reports)
             self.add_menu_btn("Usuarios", self._show_users)
 
@@ -111,6 +115,13 @@ class MainWindow(QMainWindow):
         )
         btn.clicked.connect(callback)
         self.menu_layout.addWidget(btn)
+
+    def _show_default_widget(self):
+        """Muestra el widget por defecto según el rol"""
+        if self.current_user.role == "vendedor":
+            self._show_sells()
+        else:
+            self._show_products()
 
     def _show_products(self):
         """Muestra el widget de gestión de productos"""

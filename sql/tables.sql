@@ -1,15 +1,18 @@
 -- ============================================================
--- ESQUEMA DE BASE DE DATOS
+-- TABLAS DEL ESQUEMA
 -- Sistema de Gestión de Inventario
 -- Motor: PostgreSQL
 -- ============================================================
 
 -- Tipo ENUM para roles de usuario
 DO $$ BEGIN
-    CREATE TYPE user_roles AS ENUM ('admin', 'vendedor');
+    CREATE TYPE user_roles AS ENUM ('admin', 'almacen', 'vendedor');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
+
+-- Agregar valor 'almacen' por si el ENUM ya existía sin él
+ALTER TYPE user_roles ADD VALUE IF NOT EXISTS 'almacen';
 
 -- Tabla: users (autenticación y roles)
 CREATE TABLE IF NOT EXISTS users (
@@ -90,63 +93,5 @@ CREATE INDEX IF NOT EXISTS idx_entry_product ON entry(id_prod);
 CREATE INDEX IF NOT EXISTS idx_out_product ON out(id_prod);
 CREATE INDEX IF NOT EXISTS idx_prodsell_product ON prod_sell(id_prod);
 CREATE INDEX IF NOT EXISTS idx_prodsell_sell ON prod_sell("idSell");
-
--- Vistas
-CREATE OR REPLACE VIEW v_stock_profit AS
-SELECT id_prod, name, cant AS stock, cost, price,
-       (price - cost) * cant AS expected_profit
-FROM product;
-
-CREATE OR REPLACE VIEW v_sales_summary AS
-SELECT p.id_prod, p.name,
-       COALESCE(SUM(ps.cant), 0) AS total_units_sold,
-       COALESCE(SUM(ps.cant * p.price), 0) AS total_revenue
-FROM product p
-LEFT JOIN prod_sell ps ON p.id_prod = ps.id_prod
-GROUP BY p.id_prod;
-
-CREATE OR REPLACE VIEW v_stock_movements AS
-SELECT id_prod, cant, date, 'ENTRY' AS type FROM entry
-UNION ALL
-SELECT id_prod, cant, date, 'OUT' AS type FROM out;
-
--- Funcion y triggers para updated_at automatico
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_product_updated_at ON product;
-CREATE TRIGGER trg_product_updated_at
-BEFORE UPDATE ON product FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-DROP TRIGGER IF EXISTS trg_entry_updated_at ON entry;
-CREATE TRIGGER trg_entry_updated_at
-BEFORE UPDATE ON entry FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-DROP TRIGGER IF EXISTS trg_out_updated_at ON out;
-CREATE TRIGGER trg_out_updated_at
-BEFORE UPDATE ON out FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-DROP TRIGGER IF EXISTS trg_sell_updated_at ON sell;
-CREATE TRIGGER trg_sell_updated_at
-BEFORE UPDATE ON sell FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
-CREATE TRIGGER trg_users_updated_at
-BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Trigger de auditoria de cambios de precio
-CREATE OR REPLACE FUNCTION audit_price_change()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF OLD.price IS DISTINCT FROM NEW.price THEN
-        INSERT INTO product_audit (product_id, old_price, new_price)
-        VALUES (OLD.id_prod, OLD.price, NEW.price);
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_audit_price_changes ON product;
-CREATE TRIGGER trg_audit_price_changes
-AFTER UPDATE ON product FOR EACH ROW EXECUTE FUNCTION audit_price_change();
+CREATE INDEX IF NOT EXISTS idx_audit_product ON product_audit(product_id);
+CREATE INDEX IF NOT EXISTS idx_audit_date ON product_audit(changed_at);

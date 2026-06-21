@@ -33,7 +33,13 @@ def verify_role(user: User, required_role: str) -> bool:
     return user.role == required_role
 
 
+def require_role(user: User, *allowed_roles: str) -> None:
+    """Verifica que el usuario tenga uno de los roles permitidos; lanza PermissionError si no"""
+    if user.role not in allowed_roles:
+        roles_str = ", ".join(allowed_roles)
+        raise PermissionError(f"Se requieren permisos de {roles_str}")
+
+
 def require_admin(user: User) -> None:
     """Verifica que el usuario sea administrador; lanza PermissionError si no lo es"""
-    if user.role != "admin":
-        raise PermissionError("Se requieren permisos de administrador")
+    require_role(user, "admin")

@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 )
 from src.database.session import get_session
 from src.ui.base_dialog import BaseDialog
+from src.services.auth_service import require_role
 from src.services.product_service import (
     create_product, get_all_products, update_product, delete_product,
 )
@@ -38,6 +39,7 @@ class ProductWidget(QWidget):
         """Inicializa el widget y carga la lista de productos"""
         super().__init__()
         self.current_user = user
+        require_role(self.current_user, "admin", "almacen", "vendedor")
         self._setup_ui()
         self._load_products()
 
@@ -52,10 +54,12 @@ class ProductWidget(QWidget):
         layout.addWidget(header)
 
         btn_layout = QHBoxLayout()
-        self.add_btn = QPushButton("Nuevo Producto")
-        self.add_btn.setObjectName("success")
-        self.add_btn.clicked.connect(self._add_product)
-        btn_layout.addWidget(self.add_btn)
+        self._read_only = self.current_user.role == "vendedor"
+        if not self._read_only:
+            self.add_btn = QPushButton("Nuevo Producto")
+            self.add_btn.setObjectName("success")
+            self.add_btn.clicked.connect(self._add_product)
+            btn_layout.addWidget(self.add_btn)
 
         self.refresh_btn = QPushButton("Actualizar")
         self.refresh_btn.setObjectName("primary")
@@ -67,8 +71,12 @@ class ProductWidget(QWidget):
 
         self.table = QTableWidget()
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Stock", "Costo", "Precio", "Editar", "Eliminar"])
+        if self._read_only:
+            self.table.setColumnCount(5)
+            self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Stock", "Costo", "Precio"])
+        else:
+            self.table.setColumnCount(7)
+            self.table.setHorizontalHeaderLabels(["ID", "Nombre", "Stock", "Costo", "Precio", "Editar", "Eliminar"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
@@ -91,16 +99,17 @@ class ProductWidget(QWidget):
                 self.table.setItem(i, 3, QTableWidgetItem(str(p.cost)))
                 self.table.setItem(i, 4, QTableWidgetItem(str(p.price)))
 
-                edit_btn = QPushButton("Editar")
-                edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-                edit_btn.clicked.connect(lambda checked, pid=p.id_prod: self._edit_product(pid))
-                self.table.setCellWidget(i, 5, edit_btn)
+                if not self._read_only:
+                    edit_btn = QPushButton("Editar")
+                    edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                    edit_btn.clicked.connect(lambda checked, pid=p.id_prod: self._edit_product(pid))
+                    self.table.setCellWidget(i, 5, edit_btn)
 
-                delete_btn = QPushButton("Eliminar")
-                delete_btn.setObjectName("danger")
-                delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-                delete_btn.clicked.connect(lambda checked, pid=p.id_prod: self._delete_product(pid))
-                self.table.setCellWidget(i, 6, delete_btn)
+                    delete_btn = QPushButton("Eliminar")
+                    delete_btn.setObjectName("danger")
+                    delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                    delete_btn.clicked.connect(lambda checked, pid=p.id_prod: self._delete_product(pid))
+                    self.table.setCellWidget(i, 6, delete_btn)
             self.table.setSortingEnabled(True)
         finally:
             session.close()

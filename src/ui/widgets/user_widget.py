@@ -150,7 +150,7 @@ class UserDialog(BaseDialog):
         form.addRow("Contraseña:", self.password_input)
 
         self.role_combo = QComboBox()
-        self.role_combo.addItems(["vendedor", "admin"])
+        self.role_combo.addItems(["vendedor", "almacen", "admin"])
         form.addRow("Rol:", self.role_combo)
 
         self.content_layout.addLayout(form)

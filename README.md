@@ -12,11 +12,11 @@ Aplicación de escritorio para gestión de inventario con roles (admin/vendedor)
 
 Consulta la **[guía de instalación completa](docs/instalacion.md)** para instrucciones detalladas según tu sistema operativo:
 
-| Sistema | Script automatizado |
-|---------|-------------------|
-| Linux   | `./run.sh`        |
-| Windows (cmd) | `run.bat`    |
-| Windows (PowerShell) | `.\run.ps1` |
+| Sistema | Iniciar app | Limpiar BD |
+|---------|------------|------------|
+| Linux   | `./run.sh` | `./clean.sh` |
+| Windows (cmd) | `run.bat` | `clean.bat` |
+| Windows (PowerShell) | `.\run.ps1` | `.\clean.ps1` |
 
 ### Resumen rápido
 
@@ -43,6 +43,14 @@ run.bat
 
 Puedes crear más usuarios desde el panel de administración.
 
+## Roles y permisos
+
+| Rol | Acceso |
+|-----|--------|
+| **admin** | Acceso completo: productos, entradas, salidas, ventas, reportes y usuarios |
+| **almacen** | Gestión de inventario: productos, entradas y salidas |
+| **vendedor** | Ventas y consulta de stock de productos (solo lectura) |
+
 ## Recrear la base de datos desde cero
 
 ```bash
@@ -50,26 +58,39 @@ Puedes crear más usuarios desde el panel de administración.
 dropdb stockmanager
 createdb stockmanager
 
-# 2. Iniciar la app (crea las tablas automáticamente)
-PYTHONPATH=. python src/main.py
-# Presiona Ctrl+C una vez que veas "Base de datos lista"
-
-# 3. Sembrar usuario admin y datos de prueba
+# 2. Sembrar esquema y datos de prueba
 PYTHONPATH=. python src/seed.py
-psql -U postgres -d stockmanager -f seed_data.sql
 
-# 4. Ejecutar normalmente
+# 3. Iniciar la aplicación
 PYTHONPATH=. python src/main.py
 ```
 
-O simplemente usar `run.sh` (Linux), `run.bat` (Windows cmd) o `run.ps1` (Windows PowerShell) que hacen todo automáticamente.
+O simplemente usar los scripts automatizados (`run.sh`, `run.bat`, `run.ps1`) que hacen todo automáticamente.
+
+## Limpiar datos sin borrar la base de datos
+
+Para eliminar todos los registros y reiniciar secuencias (sin borrar las tablas):
+
+| Sistema | Comando |
+|---------|---------|
+| Linux   | `./clean.sh` |
+| Windows (cmd) | `clean.bat` |
+| Windows (PowerShell) | `.\clean.ps1` |
+
+Luego puedes volver a sembrar los datos con `PYTHONPATH=. python src/seed.py`.
 
 ## Estructura del proyecto
 
 ```
+sql/
+├── tables.sql                     # Creación de tablas, enums e índices
+├── views.sql                      # Vistas del sistema
+├── triggers.sql                   # Funciones y disparadores (integridad)
+├── clean.sql                      # Limpieza de datos
+└── seed.sql                       # Datos de prueba
 src/
 ├── main.py                        # Punto de entrada
-├── seed.py                        # Creación de usuario admin inicial
+├── seed.py                        # Ejecuta SQL en orden + datos de prueba
 ├── database/
 │   ├── base.py                    # Base declarativa SQLAlchemy
 │   └── session.py                 # Conexión a PostgreSQL
@@ -79,7 +100,11 @@ src/
 │   ├── entry.py                   # Entradas de stock
 │   ├── out.py                     # Salidas de stock
 │   ├── sell.py                    # Ventas
-│   └── prod_sell.py               # Productos por venta (N:M)
+│   ├── prod_sell.py               # Productos por venta (N:M)
+│   ├── product_audit.py           # Auditoría de cambios de precio
+│   ├── v_stock_profit.py          # Vista: ganancia esperada
+│   ├── v_sales_summary.py         # Vista: resumen de ventas
+│   └── v_stock_movements.py       # Vista: movimientos unificados
 ├── services/
 │   ├── auth_service.py            # Autenticación con bcrypt
 │   ├── user_service.py            # CRUD de usuarios
@@ -103,11 +128,6 @@ tests/
 ├── test_models.py                 # Tests de modelos
 └── test_services.py               # Tests de servicios
 ```
-
-## Roles y permisos
-
-- **Admin**: acceso completo a todas las funciones, incluyendo gestión de usuarios
-- **Vendedor**: puede gestionar productos, entradas, salidas, ventas y reportes
 
 ## Migraciones con Alembic
 

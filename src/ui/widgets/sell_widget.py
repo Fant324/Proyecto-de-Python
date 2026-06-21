@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
 )
 from src.database.session import get_session
 from src.ui.base_dialog import BaseDialog
+from src.services.auth_service import require_role
 from src.services.sell_service import register_sell, get_sells
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ class SellWidget(QWidget):
         """Inicializa el widget y carga la lista de ventas"""
         super().__init__()
         self.current_user = user
+        require_role(self.current_user, "admin", "vendedor")
         self._setup_ui()
         self._load_sells()
 

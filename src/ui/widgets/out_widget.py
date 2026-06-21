@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 from src.database.session import get_session
 from src.ui.base_dialog import BaseDialog
+from src.services.auth_service import require_role
 from src.services.out_service import register_out, get_outs
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ class OutWidget(QWidget):
         """Inicializa el widget y carga la lista de salidas"""
         super().__init__()
         self.current_user = user
+        require_role(self.current_user, "admin", "almacen")
         self._setup_ui()
         self._load_outs()
 

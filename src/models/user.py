@@ -15,7 +15,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
-    role = Column(Enum("admin", "vendedor", name="user_roles"), nullable=False, default="vendedor")
+    role = Column(Enum("admin", "almacen", "vendedor", name="user_roles"), nullable=False, default="vendedor")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True, nullable=False)

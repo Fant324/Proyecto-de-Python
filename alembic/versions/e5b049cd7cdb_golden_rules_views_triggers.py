@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -19,21 +20,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # --- FASE 1: CHECK constraints ---
-    op.execute("ALTER TABLE product ADD CONSTRAINT chk_product_price_positive CHECK (price >= 0);")
-    op.execute("ALTER TABLE product ADD CONSTRAINT chk_product_cost_positive CHECK (cost >= 0);")
-    op.execute("ALTER TABLE product ADD CONSTRAINT chk_product_stock_non_negative CHECK (cant >= 0);")
-    op.execute("ALTER TABLE entry ADD CONSTRAINT chk_entry_cant_positive CHECK (cant > 0);")
-    op.execute("ALTER TABLE out ADD CONSTRAINT chk_out_cant_positive CHECK (cant > 0);")
+    # --- FASE 0: Agregar rol 'almacen' al ENUM existente ---
+    op.execute("ALTER TYPE user_roles ADD VALUE IF NOT EXISTS 'almacen';")
+
+    # --- FASE 1: CHECK constraints (idempotente) ---
+    op.execute("ALTER TABLE product ADD CONSTRAINT IF NOT EXISTS chk_product_price_positive CHECK (price >= 0);")
+    op.execute("ALTER TABLE product ADD CONSTRAINT IF NOT EXISTS chk_product_cost_positive CHECK (cost >= 0);")
+    op.execute("ALTER TABLE product ADD CONSTRAINT IF NOT EXISTS chk_product_stock_non_negative CHECK (cant >= 0);")
+    op.execute("ALTER TABLE entry ADD CONSTRAINT IF NOT EXISTS chk_entry_cant_positive CHECK (cant > 0);")
+    op.execute("ALTER TABLE out ADD CONSTRAINT IF NOT EXISTS chk_out_cant_positive CHECK (cant > 0);")
 
     # --- FASE 1: Indexes for JOINS and date filters ---
-    op.create_index('idx_entry_date', 'entry', ['date'])
-    op.create_index('idx_out_date', 'out', ['date'])
-    op.create_index('idx_sell_date', 'sell', ['date'])
-    op.create_index('idx_entry_product', 'entry', ['id_prod'])
-    op.create_index('idx_out_product', 'out', ['id_prod'])
-    op.create_index('idx_prodsell_product', 'prod_sell', ['id_prod'])
-    op.create_index('idx_prodsell_sell', 'prod_sell', ['idSell'])
+    op.create_index('idx_entry_date', 'entry', ['date'], if_not_exists=True)
+    op.create_index('idx_out_date', 'out', ['date'], if_not_exists=True)
+    op.create_index('idx_sell_date', 'sell', ['date'], if_not_exists=True)
+    op.create_index('idx_entry_product', 'entry', ['id_prod'], if_not_exists=True)
+    op.create_index('idx_out_product', 'out', ['id_prod'], if_not_exists=True)
+    op.create_index('idx_prodsell_product', 'prod_sell', ['id_prod'], if_not_exists=True)
+    op.create_index('idx_prodsell_sell', 'prod_sell', ['idSell'], if_not_exists=True)
 
     # --- FASE 2: Timestamps y Soft Delete ---
     op.add_column('product', sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()))
@@ -53,15 +57,15 @@ def upgrade() -> None:
     op.add_column('users', sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now()))
     op.add_column('users', sa.Column('is_active', sa.Boolean(), server_default=sa.text('TRUE'), nullable=False))
 
-    # --- FASE 3: Vistas ---
+    # --- FASE 3: Vistas (CREATE OR REPLACE para ser idempotente) ---
     op.execute("""
-        CREATE VIEW v_stock_profit AS
+        CREATE OR REPLACE VIEW v_stock_profit AS
         SELECT id_prod, name, cant AS stock, cost, price,
                (price - cost) * cant AS expected_profit
         FROM product;
     """)
     op.execute("""
-        CREATE VIEW v_sales_summary AS
+        CREATE OR REPLACE VIEW v_sales_summary AS
         SELECT p.id_prod, p.name,
                COALESCE(SUM(ps.cant), 0) AS total_units_sold,
                COALESCE(SUM(ps.cant * p.price), 0) AS total_revenue
@@ -70,7 +74,7 @@ def upgrade() -> None:
         GROUP BY p.id_prod;
     """)
     op.execute("""
-        CREATE VIEW v_stock_movements AS
+        CREATE OR REPLACE VIEW v_stock_movements AS
         SELECT id_prod, cant, date, 'ENTRY' AS type FROM entry
         UNION ALL
         SELECT id_prod, cant, date, 'OUT' AS type FROM out;
@@ -86,10 +90,15 @@ def upgrade() -> None:
         END;
         $$ LANGUAGE plpgsql;
     """)
+    op.execute("DROP TRIGGER IF EXISTS trg_product_updated_at ON product;")
     op.execute("CREATE TRIGGER trg_product_updated_at BEFORE UPDATE ON product FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();")
+    op.execute("DROP TRIGGER IF EXISTS trg_entry_updated_at ON entry;")
     op.execute("CREATE TRIGGER trg_entry_updated_at BEFORE UPDATE ON entry FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();")
+    op.execute("DROP TRIGGER IF EXISTS trg_out_updated_at ON out;")
     op.execute("CREATE TRIGGER trg_out_updated_at BEFORE UPDATE ON out FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();")
+    op.execute("DROP TRIGGER IF EXISTS trg_sell_updated_at ON sell;")
     op.execute("CREATE TRIGGER trg_sell_updated_at BEFORE UPDATE ON sell FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();")
+    op.execute("DROP TRIGGER IF EXISTS trg_users_updated_at ON users;")
     op.execute("CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();")
 
     # --- FASE 4: Tabla de auditoria de precios ---
@@ -101,6 +110,9 @@ def upgrade() -> None:
         sa.Column('changed_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.PrimaryKeyConstraint('id'),
     )
+    op.create_index('idx_audit_product', 'product_audit', ['product_id'], if_not_exists=True)
+    op.create_index('idx_audit_date', 'product_audit', ['changed_at'], if_not_exists=True)
+
     op.execute("""
         CREATE OR REPLACE FUNCTION audit_price_change()
         RETURNS TRIGGER AS $$
@@ -113,11 +125,29 @@ def upgrade() -> None:
         END;
         $$ LANGUAGE plpgsql;
     """)
+    op.execute("DROP TRIGGER IF EXISTS trg_audit_price_changes ON product;")
     op.execute("CREATE TRIGGER trg_audit_price_changes AFTER UPDATE ON product FOR EACH ROW EXECUTE FUNCTION audit_price_change();")
+
+    # --- FASE 4: Validacion precio >= costo ---
+    op.execute("""
+        CREATE OR REPLACE FUNCTION check_price_ge_cost()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            IF NEW.price < NEW.cost THEN
+                RAISE EXCEPTION 'El precio (%.2f) no puede ser menor que el costo (%.2f)', NEW.price, NEW.cost;
+            END IF;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """)
+    op.execute("DROP TRIGGER IF EXISTS trg_product_price_check ON product;")
+    op.execute("CREATE TRIGGER trg_product_price_check BEFORE INSERT OR UPDATE ON product FOR EACH ROW EXECUTE FUNCTION check_price_ge_cost();")
 
 
 def downgrade() -> None:
     # --- Reverse: Triggers y funciones ---
+    op.execute("DROP TRIGGER IF EXISTS trg_product_price_check ON product;")
+    op.execute("DROP FUNCTION IF EXISTS check_price_ge_cost;")
     op.execute("DROP TRIGGER IF EXISTS trg_audit_price_changes ON product;")
     op.execute("DROP FUNCTION IF EXISTS audit_price_change;")
     op.execute("DROP TRIGGER IF EXISTS trg_product_updated_at ON product;")
@@ -128,6 +158,8 @@ def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS update_updated_at_column;")
 
     # --- Reverse: Tabla de auditoria ---
+    op.drop_index('idx_audit_date', table_name='product_audit', if_exists=True)
+    op.drop_index('idx_audit_product', table_name='product_audit', if_exists=True)
     op.drop_table('product_audit')
 
     # --- Reverse: Vistas ---
@@ -150,13 +182,13 @@ def downgrade() -> None:
     op.drop_column('product', 'created_at')
 
     # --- Reverse: Indices ---
-    op.drop_index('idx_prodsell_sell')
-    op.drop_index('idx_prodsell_product')
-    op.drop_index('idx_out_product')
-    op.drop_index('idx_entry_product')
-    op.drop_index('idx_sell_date')
-    op.drop_index('idx_out_date')
-    op.drop_index('idx_entry_date')
+    op.drop_index('idx_prodsell_sell', table_name='prod_sell', if_exists=True)
+    op.drop_index('idx_prodsell_product', table_name='prod_sell', if_exists=True)
+    op.drop_index('idx_out_product', table_name='out', if_exists=True)
+    op.drop_index('idx_entry_product', table_name='entry', if_exists=True)
+    op.drop_index('idx_sell_date', table_name='sell', if_exists=True)
+    op.drop_index('idx_out_date', table_name='out', if_exists=True)
+    op.drop_index('idx_entry_date', table_name='entry', if_exists=True)
 
     # --- Reverse: CHECK constraints ---
     op.execute("ALTER TABLE out DROP CONSTRAINT IF EXISTS chk_out_cant_positive;")
